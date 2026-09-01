@@ -9,6 +9,8 @@ const LOGIN_STORAGE_KEY = 'clinica-sonrisa-admin-login'
 const USUARIO = 'alex'
 const CONTRASEÑA = '1234'
 
+
+const Made = '1234'
 export default function Administrador() {
   const { servicios, agregarServicio, modificarServicio, eliminarServicio } = useServicios()
   const [form, setForm] = useState(formVacio)
