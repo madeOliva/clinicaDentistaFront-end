@@ -24,6 +24,19 @@ export default function Contactenos() {
           <h3>Correo</h3>
           <p>{CLINIC.email}</p>
         </div>
+
+        <div className="contacto-card">
+          <span className="contacto-icon">🕐</span>
+          <h3>Horario de atención</h3>
+          <ul className="schedule-list">
+            {CLINIC.schedule.map((item) => (
+              <li key={item.days}>
+                <span className="schedule-days">{item.days}</span>
+                <span className="schedule-hours">{item.hours}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       <div className="redes">

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useServicios } from '../data'
 import { CLINIC, whatsappLink } from '../config'
+import { PAISES } from '../paises'
 import type { Cita } from '../types'
 
 const vacio: Cita = { nombre: '', apellidos: '', edad: '', celular: '', servicio: '', fecha: '' }
@@ -10,6 +11,7 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
   const { servicios } = useServicios()
   const [form, setForm] = useState<Cita>({ ...vacio, servicio: servicioInicial })
   const [enviado, setEnviado] = useState(false)
+  const [pais, setPais] = useState('+53')
 
   const hoy = new Date().toISOString().split('T')[0]
 
@@ -19,12 +21,13 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
 
   function manejarEnvio(e: FormEvent) {
     e.preventDefault()
+    const celularCompleto = `${pais} ${form.celular}`
     const mensaje =
       `Hola ${CLINIC.name}, deseo agendar una cita.\n\n` +
       `👤 Nombre: ${form.nombre}\n` +
       `👤 Apellidos: ${form.apellidos}\n` +
       `🎂 Edad: ${form.edad}\n` +
-      `📱 Celular: ${form.celular}\n` +
+      `📱 Celular: ${celularCompleto}\n` +
       `🦷 Servicio: ${form.servicio}\n` +
       `📅 Fecha deseada: ${form.fecha}\n\n` +
       `¿Está disponible mi fecha? De no ser posible, por favor indíqueme un turno en otra fecha.`
@@ -34,7 +37,7 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
   }
 
   return (
-    <section className="page citas">
+    <section className="page citas citas-page">
       <h1>Agenda tu cita</h1>
       <p className="page-subtitle">
         Completa el formulario y presiona enviar. Tu solicitud se enviará por WhatsApp a nuestro
@@ -88,14 +91,29 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
 
         <div className="campo">
           <label htmlFor="celular">Número de celular</label>
-          <input
-            id="celular"
-            type="tel"
-            required
-            value={form.celular}
-            onChange={(e) => cambiar('celular', e.target.value)}
-            placeholder="Tu número de celular"
-          />
+          <div className="campo-row tel-row">
+            <select
+              id="pais"
+              aria-label="Código de país"
+              className="tel-pais"
+              value={pais}
+              onChange={(e) => setPais(e.target.value)}
+            >
+              {PAISES.map((p) => (
+                <option key={p.nombre} value={p.codigo}>
+                  {p.bandera} {p.nombre} ({p.codigo})
+                </option>
+              ))}
+            </select>
+            <input
+              id="celular"
+              type="tel"
+              required
+              value={form.celular}
+              onChange={(e) => cambiar('celular', e.target.value)}
+              placeholder="Tu número de celular"
+            />
+          </div>
         </div>
 
         <div className="campo">

@@ -208,6 +208,10 @@
 }
 
 /* ===== Servicios ===== */
+.servicios {
+  text-align: center;
+}
+
 .servicios-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -222,6 +226,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  text-align: center;
   box-shadow: 0 2px 10px rgba(59, 130, 246, 0.08);
 }
 
@@ -249,6 +254,18 @@
 }
 
 /* ===== Citas ===== */
+.citas-page {
+  text-align: center;
+}
+
+.citas-page .cita-form {
+  max-width: 560px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+
 .cita-form,
 .servicio-form {
   background: var(--color-blanco);
@@ -304,6 +321,16 @@
   gap: 1rem;
 }
 
+.tel-row {
+  grid-template-columns: max-content 1fr;
+  align-items: start;
+}
+
+.tel-pais {
+  min-width: 200px;
+  max-width: 260px;
+}
+
 .success-box {
   background: #e7f7ee;
   color: #166534;
@@ -314,6 +341,10 @@
 }
 
 /* ===== Contáctenos ===== */
+.contactenos {
+  text-align: center;
+}
+
 .contacto-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -338,6 +369,30 @@
   color: var(--color-texto-suave);
 }
 
+.schedule-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.schedule-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.schedule-days {
+  font-weight: 600;
+  color: var(--color-azul-oscuro);
+}
+
+.schedule-hours {
+  color: var(--color-texto-suave);
+}
+
 .redes {
   text-align: center;
 }
@@ -350,6 +405,44 @@
 }
 
 /* ===== Administrador ===== */
+.admin-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.admin-header .page-subtitle {
+  margin-bottom: 0;
+}
+
+.login-page {
+  text-align: center;
+}
+
+.administrador .login-form {
+  max-width: 420px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.login-form .campo {
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.login-form .form-buttons {
+  justify-content: center;
+}
+
+.login-error {
+  color: var(--color-rojo);
+  font-weight: 600;
+}
+
 .servicio-form {
   margin-bottom: 2.5rem;
 }
@@ -414,6 +507,82 @@
   color: var(--color-texto-suave);
 }
 
+/* ===== Modal Edición ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-card {
+  background: var(--color-blanco);
+  border: 1px solid var(--color-azul-claro);
+  border-radius: 16px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  animation: modalIn 0.25s ease;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-header h2 {
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  color: var(--color-texto-suave);
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.modal-close:hover {
+  background: var(--color-azul-claro);
+  color: var(--color-rojo);
+}
+
+.modal-card .form-buttons {
+  margin-top: 1rem;
+}
+
+.admin-header-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 /* ===== Footer ===== */
 .footer {
   background: var(--color-blanco);
@@ -463,5 +632,12 @@
   }
   .campo-row {
     grid-template-columns: 1fr;
+  }
+  .tel-row {
+    grid-template-columns: 1fr;
+  }
+  .tel-pais {
+    max-width: none;
+    width: 100%;
   }
 }
