@@ -1,5 +1,5 @@
 import type { Vista } from '../types'
-import { CLINIC } from '../config'
+import { useContacto } from '../contactConfig'
 
 interface NavbarProps {
   vista: Vista
@@ -15,11 +15,12 @@ const enlaces: { key: Vista; label: string }[] = [
 ]
 
 export default function Navbar({ vista, setVista }: NavbarProps) {
+  const { contacto } = useContacto()
   return (
     <header className="navbar">
       <button className="brand" onClick={() => setVista('home')}>
         <span className="brand-logo">🦷</span>
-        <span className="brand-name">{CLINIC.name}</span>
+        <span className="brand-name">{contacto.name}</span>
       </button>
       <nav className="nav-links">
         {enlaces.map((e) => (

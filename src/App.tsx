@@ -7,6 +7,7 @@ import Citas from './pages/Citas'
 import Contactenos from './pages/Contactenos'
 import Administrador from './pages/Administrador'
 import { ServiciosProvider } from './data'
+import { ContactoProvider } from './contactConfig'
 import type { Vista } from './types'
 import './App.css'
 
@@ -21,17 +22,22 @@ function App() {
 
   return (
     <ServiciosProvider>
-      <div className="app">
-        <Navbar vista={vista} setVista={setVista} />
-        <main className="contenido">
-          {vista === 'home' && <Home setVista={setVista} />}
-          {vista === 'servicios' && <Servicios onReservar={reservarServicio} />}
-          {vista === 'citas' && <Citas servicioInicial={servicioSeleccionado} />}
-          {vista === 'contactenos' && <Contactenos />}
-          {vista === 'administrador' && <Administrador />}
-        </main>
-        <Footer setVista={setVista} />
-      </div>
+      <ContactoProvider>
+        {vista === 'administrador' ? (
+          <Administrador onVolverAlSitio={() => setVista('home')} />
+        ) : (
+          <div className="app">
+            <Navbar vista={vista} setVista={setVista} />
+            <main className="contenido">
+              {vista === 'home' && <Home setVista={setVista} />}
+              {vista === 'servicios' && <Servicios onReservar={reservarServicio} />}
+              {vista === 'citas' && <Citas servicioInicial={servicioSeleccionado} />}
+              {vista === 'contactenos' && <Contactenos />}
+            </main>
+            <Footer setVista={setVista} />
+          </div>
+        )}
+      </ContactoProvider>
     </ServiciosProvider>
   )
 }

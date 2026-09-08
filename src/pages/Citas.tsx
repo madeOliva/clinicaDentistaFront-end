@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useServicios } from '../data'
-import { CLINIC, whatsappLink } from '../config'
+import { useContacto, whatsappLink } from '../contactConfig'
 import { PAISES } from '../paises'
 import type { Cita } from '../types'
 
@@ -9,6 +9,7 @@ const vacio: Cita = { nombre: '', apellidos: '', edad: '', celular: '', servicio
 
 export default function Citas({ servicioInicial = '' }: { servicioInicial?: string }) {
   const { servicios } = useServicios()
+  const { contacto } = useContacto()
   const [form, setForm] = useState<Cita>({ ...vacio, servicio: servicioInicial })
   const [enviado, setEnviado] = useState(false)
   const [pais, setPais] = useState('+53')
@@ -23,7 +24,7 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
     e.preventDefault()
     const celularCompleto = `${pais} ${form.celular}`
     const mensaje =
-      `Hola ${CLINIC.name}, deseo agendar una cita.\n\n` +
+      `Hola ${contacto.name}, deseo agendar una cita.\n\n` +
       `👤 Nombre: ${form.nombre}\n` +
       `👤 Apellidos: ${form.apellidos}\n` +
       `🎂 Edad: ${form.edad}\n` +
@@ -31,7 +32,7 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
       `🦷 Servicio: ${form.servicio}\n` +
       `📅 Fecha deseada: ${form.fecha}\n\n` +
       `¿Está disponible mi fecha? De no ser posible, por favor indíqueme un turno en otra fecha.`
-    window.open(whatsappLink(mensaje), '_blank')
+    window.open(whatsappLink(contacto.whatsapp, mensaje), '_blank')
     setEnviado(true)
     setForm(vacio)
   }

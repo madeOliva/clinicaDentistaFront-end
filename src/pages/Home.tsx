@@ -1,12 +1,13 @@
 import type { Vista } from '../types'
-import { CLINIC } from '../config'
+import { useContacto } from '../contactConfig'
 
 export default function Home({ setVista }: { setVista: (v: Vista) => void }) {
+  const { contacto } = useContacto()
   return (
     <section className="page home">
       <div className="hero">
         <div className="hero-icon">🦷</div>
-        <h1>Bienvenido a {CLINIC.name}</h1>
+        <h1>Bienvenido a {contacto.name}</h1>
         <p className="hero-subtitle">
           Tu sonrisa es nuestra prioridad. Somos una clínica dental dedicada a brindarte una
           atención de calidad, con tecnología moderna y un equipo de profesionales que te

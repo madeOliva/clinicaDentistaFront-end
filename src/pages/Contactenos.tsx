@@ -1,6 +1,12 @@
-import { CLINIC, whatsappLink } from '../config'
+import { useContacto, whatsappLink } from '../contactConfig'
 
 export default function Contactenos() {
+  const { contacto } = useContacto()
+
+  const whatsappHref =
+    contacto.whatsappUrl?.trim() ||
+    whatsappLink(contacto.whatsapp, 'Hola, quiero más información.')
+
   return (
     <section className="page contactenos">
       <h1>Contáctenos</h1>
@@ -10,26 +16,26 @@ export default function Contactenos() {
         <div className="contacto-card">
           <span className="contacto-icon">📍</span>
           <h3>Dirección</h3>
-          <p>{CLINIC.address}</p>
+          <p>{contacto.address}</p>
         </div>
 
         <div className="contacto-card">
           <span className="contacto-icon">📞</span>
           <h3>Teléfono</h3>
-          <p>{CLINIC.telephone}</p>
+          <p>{contacto.telephone}</p>
         </div>
 
         <div className="contacto-card">
           <span className="contacto-icon">📧</span>
           <h3>Correo</h3>
-          <p>{CLINIC.email}</p>
+          <p>{contacto.email}</p>
         </div>
 
         <div className="contacto-card">
           <span className="contacto-icon">🕐</span>
           <h3>Horario de atención</h3>
           <ul className="schedule-list">
-            {CLINIC.schedule.map((item) => (
+            {contacto.schedule.map((item) => (
               <li key={item.days}>
                 <span className="schedule-days">{item.days}</span>
                 <span className="schedule-hours">{item.hours}</span>
@@ -42,13 +48,18 @@ export default function Contactenos() {
       <div className="redes">
         <h2>Síguenos en redes</h2>
         <div className="redes-links">
-          <a className="btn btn-red" href={CLINIC.facebook} target="_blank" rel="noreferrer">
+          <a className="btn btn-red" href={contacto.facebook} target="_blank" rel="noreferrer">
             Facebook
           </a>
-          <a className="btn btn-red" href={CLINIC.instagram} target="_blank" rel="noreferrer">
+          <a className="btn btn-red" href={contacto.instagram} target="_blank" rel="noreferrer">
             Instagram
           </a>
-          <a className="btn btn-red" href={whatsappLink('Hola, quiero más información.')} target="_blank" rel="noreferrer">
+          <a
+            className="btn btn-red"
+            href={whatsappHref}
+            target="_blank"
+            rel="noreferrer"
+          >
             WhatsApp
           </a>
         </div>
