@@ -1,13 +1,19 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent, ReactElement } from 'react'
 import { useServicios } from '../data'
-import { useContacto } from '../contactConfig'
+import { useContacto, VALORES_INICIALES } from '../contactConfig'
 import { getServicios, getClientes, getCitas } from '../api'
 import type { Servicio } from '../types'
 import type { ContactoConfig, HorarioItem } from '../contactConfig'
 import type { CitaBackend, ServicioBackend } from '../api'
 
 const formVacio = { nombre: '', descripcion: '', precio: '', moneda: 'USD' }
+
+interface ModalResultado {
+  tipo: 'exito' | 'error'
+  titulo: string
+  mensaje: string
+}
 
 const LOGIN_STORAGE_KEY = 'clinica-sonrisa-admin-login'
 const USUARIO = 'alex'
@@ -193,7 +199,9 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
 
   const { contacto, actualizarContacto, restablecerContacto } = useContacto()
   const [formContacto, setFormContacto] = useState<ContactoConfig>(contacto)
-  const [guardadoContacto, setGuardadoContacto] = useState(false)
+  const [editandoConfig, setEditandoConfig] = useState(false)
+  const [guardandoConfig, setGuardandoConfig] = useState(false)
+  const [modalConfig, setModalConfig] = useState<ModalResultado | null>(null)
 
   function manejarLogin(e: FormEvent) {
     e.preventDefault()
@@ -304,11 +312,10 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   }
 
   useEffect(() => {
-    if (seccion === 'configuracion') {
+    if (seccion === 'configuracion' && !editandoConfig) {
       setFormContacto(contacto)
-      setGuardadoContacto(false)
     }
-  }, [seccion, contacto])
+  }, [seccion, contacto, editandoConfig])
 
   useEffect(() => {
     if (!autenticado) return
@@ -342,10 +349,12 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   }, [autenticado, revisionDashboard])
 
   function cambiarCampoContacto(campo: keyof ContactoConfig, valor: string) {
+    setEditandoConfig(true)
     setFormContacto((prev) => ({ ...prev, [campo]: valor }))
   }
 
   function cambiarHorario(index: number, campo: keyof HorarioItem, valor: string) {
+    setEditandoConfig(true)
     setFormContacto((prev) => ({
       ...prev,
       schedule: prev.schedule.map((item, i) => (i === index ? { ...item, [campo]: valor } : item)),
@@ -353,6 +362,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   }
 
   function agregarHorario() {
+    setEditandoConfig(true)
     setFormContacto((prev) => ({
       ...prev,
       schedule: [...prev.schedule, { days: '', hours: '' }],
@@ -360,19 +370,35 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   }
 
   function eliminarHorario(index: number) {
+    setEditandoConfig(true)
     setFormContacto((prev) => ({
       ...prev,
       schedule: prev.schedule.filter((_, i) => i !== index),
     }))
   }
 
-  function guardarContacto(e: FormEvent) {
+  async function guardarContacto(e: FormEvent) {
     e.preventDefault()
     const horarioLimpio = formContacto.schedule
       .map((item) => ({ days: item.days.trim(), hours: item.hours.trim() }))
       .filter((item) => item.days || item.hours)
-    actualizarContacto({ ...formContacto, schedule: horarioLimpio })
-    setGuardadoContacto(true)
+    setGuardandoConfig(true)
+    const exito = await actualizarContacto({ ...formContacto, schedule: horarioLimpio })
+    setGuardandoConfig(false)
+    if (exito) {
+      setEditandoConfig(false)
+      setModalConfig({
+        tipo: 'exito',
+        titulo: 'Cambios guardados',
+        mensaje: 'La configuración se guardó correctamente.',
+      })
+    } else {
+      setModalConfig({
+        tipo: 'error',
+        titulo: 'Error al guardar',
+        mensaje: 'No se pudo conectar con el backend. Inténtalo de nuevo.',
+      })
+    }
   }
 
   function renderSeccion() {
@@ -738,10 +764,8 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
               aplican en todo el sitio.
             </p>
 
-            {guardadoContacto && (
-              <div className="success-box">
-                ✅ Cambios guardados correctamente. Ya se reflejan en Contáctenos.
-              </div>
+            {guardandoConfig && (
+              <div className="success-box">Guardando cambios...</div>
             )}
 
             <form className="servicio-form admin-config-form" onSubmit={guardarContacto}>
@@ -871,16 +895,32 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
               </div>
 
               <div className="form-buttons">
-                <button type="submit" className="btn btn-primary">
-                  Guardar cambios
+                <button type="submit" className="btn btn-primary" disabled={guardandoConfig}>
+                  {guardandoConfig ? 'Guardando...' : 'Guardar cambios'}
                 </button>
                 <button
                   type="button"
                   className="btn btn-outline"
-                  onClick={() => {
-                    restablecerContacto()
-                    setFormContacto(contacto)
-                    setGuardadoContacto(false)
+                  disabled={guardandoConfig}
+                  onClick={async () => {
+                    setGuardandoConfig(true)
+                    const exito = await restablecerContacto()
+                    setGuardandoConfig(false)
+                    if (exito) {
+                      setFormContacto(VALORES_INICIALES)
+                      setEditandoConfig(false)
+                      setModalConfig({
+                        tipo: 'exito',
+                        titulo: 'Valores restablecidos',
+                        mensaje: 'La configuración volvió a los valores por defecto.',
+                      })
+                    } else {
+                      setModalConfig({
+                        tipo: 'error',
+                        titulo: 'Error al restablecer',
+                        mensaje: 'No se pudo conectar con el backend. Inténtalo de nuevo.',
+                      })
+                    }
                   }}
                 >
                   Restablecer valores
@@ -943,6 +983,27 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
 
         <div className="admin-contenido">{renderSeccion()}</div>
       </div>
+
+      {modalConfig && (
+        <div className="modal-overlay" onClick={() => setModalConfig(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{modalConfig.titulo}</h2>
+              <button className="modal-close" onClick={() => setModalConfig(null)} aria-label="Cerrar">
+                ✕
+              </button>
+            </div>
+            <p className={modalConfig.tipo === 'exito' ? 'success-box' : 'login-error'}>
+              {modalConfig.mensaje}
+            </p>
+            <div className="form-buttons">
+              <button type="button" className="btn btn-primary" onClick={() => setModalConfig(null)}>
+                Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

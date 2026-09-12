@@ -28,6 +28,24 @@ export interface CitaBackend {
   fecha: string
 }
 
+export interface HorarioBackend {
+  days: string
+  hours: string
+}
+
+export interface ConfiguracionBackend {
+  _id?: string
+  name: string
+  address: string
+  telephone: string
+  email: string
+  whatsapp: string
+  whatsappUrl: string
+  facebook: string
+  instagram: string
+  schedule: HorarioBackend[]
+}
+
 export async function getServicios(): Promise<ServicioBackend[]> {
   const { data } = await api.get<ServicioBackend[]>('/servicios')
   return data
@@ -40,5 +58,17 @@ export async function getClientes(): Promise<ClienteBackend[]> {
 
 export async function getCitas(): Promise<CitaBackend[]> {
   const { data } = await api.get<CitaBackend[]>('/cita')
+  return data
+}
+
+export async function getConfiguracion(): Promise<ConfiguracionBackend> {
+  const { data } = await api.get<ConfiguracionBackend>('/configuracion')
+  return data
+}
+
+export async function updateConfiguracion(
+  config: Partial<ConfiguracionBackend>,
+): Promise<ConfiguracionBackend> {
+  const { data } = await api.patch<ConfiguracionBackend>('/configuracion', config)
   return data
 }

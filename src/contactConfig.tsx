@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { CLINIC } from './config'
+import { getConfiguracion, updateConfiguracion } from './api'
+import type { ConfiguracionBackend } from './api'
 
 export interface HorarioItem {
   days: string
@@ -21,7 +23,7 @@ export interface ContactoConfig {
 
 const STORAGE_KEY = 'clinica-sonrisa-contacto'
 
-const VALORES_INICIALES: ContactoConfig = {
+export const VALORES_INICIALES: ContactoConfig = {
   name: CLINIC.name,
   address: CLINIC.address,
   telephone: CLINIC.telephone,
@@ -50,10 +52,41 @@ function cargarContacto(): ContactoConfig {
   return VALORES_INICIALES
 }
 
+function aConfiguracionBackend(c: ContactoConfig): ConfiguracionBackend {
+  return {
+    name: c.name,
+    address: c.address,
+    telephone: c.telephone,
+    email: c.email,
+    whatsapp: c.whatsapp,
+    whatsappUrl: c.whatsappUrl,
+    facebook: c.facebook,
+    instagram: c.instagram,
+    schedule: c.schedule.map((s) => ({ days: s.days, hours: s.hours })),
+  }
+}
+
+function aContactoConfig(c: ConfiguracionBackend): ContactoConfig {
+  return {
+    name: c.name || VALORES_INICIALES.name,
+    address: c.address || VALORES_INICIALES.address,
+    telephone: c.telephone || VALORES_INICIALES.telephone,
+    email: c.email || VALORES_INICIALES.email,
+    whatsapp: c.whatsapp || VALORES_INICIALES.whatsapp,
+    whatsappUrl: c.whatsappUrl || VALORES_INICIALES.whatsappUrl,
+    facebook: c.facebook || VALORES_INICIALES.facebook,
+    instagram: c.instagram || VALORES_INICIALES.instagram,
+    schedule:
+      Array.isArray(c.schedule) && c.schedule.length > 0
+        ? c.schedule.map((s) => ({ days: s.days, hours: s.hours }))
+        : VALORES_INICIALES.schedule,
+  }
+}
+
 interface ContactoContextValue {
   contacto: ContactoConfig
-  actualizarContacto: (campos: Partial<ContactoConfig>) => void
-  restablecerContacto: () => void
+  actualizarContacto: (campos: Partial<ContactoConfig>) => Promise<boolean>
+  restablecerContacto: () => Promise<boolean>
 }
 
 const ContactoContext = createContext<ContactoContextValue | undefined>(undefined)
@@ -65,12 +98,37 @@ export function ContactoProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(contacto))
   }, [contacto])
 
-  const actualizarContacto = (campos: Partial<ContactoConfig>) => {
-    setContacto((prev) => ({ ...prev, ...campos }))
+  useEffect(() => {
+    let activo = true
+    getConfiguracion()
+      .then((config) => {
+        if (activo) setContacto(aContactoConfig(config))
+      })
+      .catch(() => {
+        // Se mantiene el valor local cuando el backend no responde
+      })
+    return () => { activo = false }
+  }, [])
+
+  const actualizarContacto = async (campos: Partial<ContactoConfig>): Promise<boolean> => {
+    const siguiente = { ...contacto, ...campos }
+    setContacto(siguiente)
+    try {
+      await updateConfiguracion(aConfiguracionBackend(siguiente))
+      return true
+    } catch {
+      return false
+    }
   }
 
-  const restablecerContacto = () => {
+  const restablecerContacto = async (): Promise<boolean> => {
     setContacto(VALORES_INICIALES)
+    try {
+      await updateConfiguracion(aConfiguracionBackend(VALORES_INICIALES))
+      return true
+    } catch {
+      return false
+    }
   }
 
   return (
