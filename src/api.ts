@@ -28,8 +28,45 @@ export interface CitaBackend {
   fecha: string
 }
 
+export interface MonedaBackend {
+  _id: string
+  tipoMoneda: string
+}
+
+export interface ClienteNuevo {
+  ci: string
+  nombre: string
+  apellidos: string
+  telefono: string
+  direccion?: string
+}
+
+export interface CitaNueva {
+  cliente: string
+  servicio: string
+  fecha: string
+}
+
+export interface ConfiguracionBackend {
+  _id?: string
+  name: string
+  address?: string
+  telephone?: string
+  email?: string
+  whatsapp?: string
+  whatsappUrl?: string
+  facebook?: string
+  instagram?: string
+  schedule?: { days?: string; hours?: string }[]
+}
+
 export async function getServicios(): Promise<ServicioBackend[]> {
   const { data } = await api.get<ServicioBackend[]>('/servicios')
+  return data
+}
+
+export async function getMonedas(): Promise<MonedaBackend[]> {
+  const { data } = await api.get<MonedaBackend[]>('/moneda')
   return data
 }
 
@@ -40,5 +77,20 @@ export async function getClientes(): Promise<ClienteBackend[]> {
 
 export async function getCitas(): Promise<CitaBackend[]> {
   const { data } = await api.get<CitaBackend[]>('/cita')
+  return data
+}
+
+export async function crearCliente(cliente: ClienteNuevo): Promise<ClienteBackend> {
+  const { data } = await api.post<ClienteBackend>('/cliente', cliente)
+  return data
+}
+
+export async function crearCita(cita: CitaNueva): Promise<CitaBackend> {
+  const { data } = await api.post<CitaBackend>('/cita', cita)
+  return data
+}
+
+export async function getConfiguracion(): Promise<ConfiguracionBackend> {
+  const { data } = await api.get<ConfiguracionBackend>('/configuracion')
   return data
 }
