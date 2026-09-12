@@ -1,11 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useServicios } from '../data'
 import { useContacto, whatsappLink } from '../contactConfig'
 import { PAISES } from '../paises'
+import { getServicios, getClientes, crearCliente, crearCita } from '../api'
+import type { ClienteBackend, ServicioBackend } from '../api'
 import type { Cita } from '../types'
 
-const vacio: Cita = { nombre: '', apellidos: '', edad: '', celular: '', servicio: '', fecha: '' }
+const vacio: Cita = {
+  ci: '',
+  nombre: '',
+  apellidos: '',
+  edad: '',
+  celular: '',
+  servicio: '',
+  fecha: '',
+}
 
 export default function Citas({ servicioInicial = '' }: { servicioInicial?: string }) {
   const { servicios } = useServicios()
@@ -13,15 +23,70 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
   const [form, setForm] = useState<Cita>({ ...vacio, servicio: servicioInicial })
   const [enviado, setEnviado] = useState(false)
   const [pais, setPais] = useState('+53')
+  const [serviciosBackend, setServiciosBackend] = useState<ServicioBackend[]>([])
+  const [clientesBackend, setClientesBackend] = useState<ClienteBackend[]>([])
+  const [error, setError] = useState('')
 
   const hoy = new Date().toISOString().split('T')[0]
+
+  useEffect(() => {
+    let activo = true
+
+    Promise.all([getServicios(), getClientes()])
+      .then(([servs, clis]) => {
+        if (!activo) return
+        setServiciosBackend(servs)
+        setClientesBackend(clis)
+      })
+      .catch(() => {})
+
+    return () => {
+      activo = false
+    }
+  }, [])
+
+  const opcionesServicio =
+    serviciosBackend.length > 0
+      ? serviciosBackend.map((s) => ({ key: s._id, nombre: s.nombreServicio }))
+      : servicios.map((s) => ({ key: s.id, nombre: s.nombre }))
 
   function cambiar(campo: keyof Cita, valor: string) {
     setForm((f) => ({ ...f, [campo]: valor }))
   }
 
-  function manejarEnvio(e: FormEvent) {
+  async function registrarEnBackend() {
+    const servicioId = serviciosBackend.find((s) => s.nombreServicio === form.servicio)?._id
+    if (!servicioId) {
+      throw new Error('servicio-no-encontrado')
+    }
+
+    const ci = form.ci.trim()
+    const telefono = `${pais} ${form.celular}`
+
+    let clienteId = clientesBackend.find((c) => c.ci === ci)?._id
+    if (!clienteId) {
+      try {
+        const nuevo = await crearCliente({ ci, nombre: form.nombre, apellidos: form.apellidos, telefono })
+        clienteId = nuevo._id
+        setClientesBackend((prev) => [...prev, nuevo])
+      } catch {
+        const existentes = await getClientes()
+        const existente = existentes.find((c) => c.ci === ci)
+        if (existente) {
+          clienteId = existente._id
+          setClientesBackend(existentes)
+        } else {
+          throw new Error('no-se-pudo-cliente')
+        }
+      }
+    }
+
+    await crearCita({ cliente: clienteId, servicio: servicioId, fecha: `${form.fecha}T10:00:00.000Z` })
+  }
+
+  async function manejarEnvio(e: FormEvent) {
     e.preventDefault()
+    setError('')
     const celularCompleto = `${pais} ${form.celular}`
     const mensaje =
       `Hola ${contacto.name}, deseo agendar una cita.\n\n` +
@@ -33,6 +98,13 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
       `📅 Fecha deseada: ${form.fecha}\n\n` +
       `¿Está disponible mi fecha? De no ser posible, por favor indíqueme un turno en otra fecha.`
     window.open(whatsappLink(contacto.whatsapp, mensaje), '_blank')
+
+    try {
+      await registrarEnBackend()
+    } catch {
+      setError('No se pudo registrar la cita en el sistema. Tu solicitud fue enviada por WhatsApp.')
+    }
+
     setEnviado(true)
     setForm(vacio)
   }
@@ -51,7 +123,25 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
         </div>
       )}
 
+      {error && (
+        <div className="login-error" role="alert">
+          {error}
+        </div>
+      )}
+
       <form className="cita-form" onSubmit={manejarEnvio}>
+        <div className="campo">
+          <label htmlFor="ci">Cédula de identidad</label>
+          <input
+            id="ci"
+            type="text"
+            required
+            value={form.ci}
+            onChange={(e) => cambiar('ci', e.target.value)}
+            placeholder="Tu CI o documento de identidad"
+          />
+        </div>
+
         <div className="campo">
           <label htmlFor="nombre">Nombre</label>
           <input
@@ -128,8 +218,8 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
             <option value="" disabled>
               Selecciona un servicio
             </option>
-            {servicios.map((s) => (
-              <option key={s.id} value={s.nombre}>
+            {opcionesServicio.map((s) => (
+              <option key={s.key} value={s.nombre}>
                 {s.nombre}
               </option>
             ))}

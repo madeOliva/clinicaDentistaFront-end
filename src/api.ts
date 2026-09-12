@@ -1,8 +1,11 @@
 import axios from 'axios'
 
+
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
+
 export const api = axios.create({ baseURL: API_URL })
+
 
 export interface ServicioBackend {
   _id: string
@@ -11,6 +14,7 @@ export interface ServicioBackend {
   precioServicio: number
   monedaServicio: string
 }
+
 
 export interface ClienteBackend {
   _id: string
@@ -21,6 +25,7 @@ export interface ClienteBackend {
   direccion?: string
 }
 
+
 export interface CitaBackend {
   _id: string
   cliente: string
@@ -28,10 +33,34 @@ export interface CitaBackend {
   fecha: string
 }
 
+
 export interface HorarioBackend {
   days: string
   hours: string
 }
+
+
+export interface MonedaBackend {
+  _id: string
+  tipoMoneda: string
+}
+
+
+export interface ClienteNuevo {
+  ci: string
+  nombre: string
+  apellidos: string
+  telefono: string
+  direccion?: string
+}
+
+
+export interface CitaNueva {
+  cliente: string
+  servicio: string
+  fecha: string
+}
+
 
 export interface ConfiguracionBackend {
   _id?: string
@@ -46,25 +75,48 @@ export interface ConfiguracionBackend {
   schedule: HorarioBackend[]
 }
 
+
 export async function getServicios(): Promise<ServicioBackend[]> {
   const { data } = await api.get<ServicioBackend[]>('/servicios')
   return data
 }
+
+
+export async function getMonedas(): Promise<MonedaBackend[]> {
+  const { data } = await api.get<MonedaBackend[]>('/moneda')
+  return data
+}
+
 
 export async function getClientes(): Promise<ClienteBackend[]> {
   const { data } = await api.get<ClienteBackend[]>('/cliente')
   return data
 }
 
+
 export async function getCitas(): Promise<CitaBackend[]> {
   const { data } = await api.get<CitaBackend[]>('/cita')
   return data
 }
 
+
+export async function crearCliente(cliente: ClienteNuevo): Promise<ClienteBackend> {
+  const { data } = await api.post<ClienteBackend>('/cliente', cliente)
+  return data
+}
+
+
+export async function crearCita(cita: CitaNueva): Promise<CitaBackend> {
+  const { data } = await api.post<CitaBackend>('/cita', cita)
+  return data
+}
+
+
 export async function getConfiguracion(): Promise<ConfiguracionBackend> {
   const { data } = await api.get<ConfiguracionBackend>('/configuracion')
   return data
 }
+
 
 export async function updateConfiguracion(
   config: Partial<ConfiguracionBackend>,

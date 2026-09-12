@@ -1,11 +1,42 @@
+import { useEffect, useState } from 'react'
 import { useContacto, whatsappLink } from '../contactConfig'
+import { getConfiguracion } from '../api'
+import type { ContactoConfig } from '../contactConfig'
 
 export default function Contactenos() {
   const { contacto } = useContacto()
+  const [configuracionBackend, setConfiguracionBackend] = useState<ContactoConfig | null>(null)
+
+  useEffect(() => {
+    let activo = true
+
+    getConfiguracion()
+      .then((cfg) => {
+        if (!activo) return
+        setConfiguracionBackend({
+          name: cfg.name ?? '',
+          address: cfg.address ?? '',
+          telephone: cfg.telephone ?? '',
+          email: cfg.email ?? '',
+          schedule: (cfg.schedule ?? []).map((s) => ({ days: s.days ?? '', hours: s.hours ?? '' })),
+          facebook: cfg.facebook ?? '',
+          instagram: cfg.instagram ?? '',
+          whatsapp: cfg.whatsapp ?? '',
+          whatsappUrl: cfg.whatsappUrl ?? '',
+        })
+      })
+      .catch(() => {})
+
+    return () => {
+      activo = false
+    }
+  }, [])
+
+  const mostrar = configuracionBackend ?? contacto
 
   const whatsappHref =
-    contacto.whatsappUrl?.trim() ||
-    whatsappLink(contacto.whatsapp, 'Hola, quiero más información.')
+    mostrar.whatsappUrl?.trim() ||
+    whatsappLink(mostrar.whatsapp, 'Hola, quiero más información.')
 
   return (
     <section className="page contactenos">
@@ -16,26 +47,26 @@ export default function Contactenos() {
         <div className="contacto-card">
           <span className="contacto-icon">📍</span>
           <h3>Dirección</h3>
-          <p>{contacto.address}</p>
+          <p>{mostrar.address}</p>
         </div>
 
         <div className="contacto-card">
           <span className="contacto-icon">📞</span>
           <h3>Teléfono</h3>
-          <p>{contacto.telephone}</p>
+          <p>{mostrar.telephone}</p>
         </div>
 
         <div className="contacto-card">
           <span className="contacto-icon">📧</span>
           <h3>Correo</h3>
-          <p>{contacto.email}</p>
+          <p>{mostrar.email}</p>
         </div>
 
         <div className="contacto-card">
           <span className="contacto-icon">🕐</span>
           <h3>Horario de atención</h3>
           <ul className="schedule-list">
-            {contacto.schedule.map((item) => (
+            {mostrar.schedule.map((item) => (
               <li key={item.days}>
                 <span className="schedule-days">{item.days}</span>
                 <span className="schedule-hours">{item.hours}</span>
@@ -48,10 +79,10 @@ export default function Contactenos() {
       <div className="redes">
         <h2>Síguenos en redes</h2>
         <div className="redes-links">
-          <a className="btn btn-red" href={contacto.facebook} target="_blank" rel="noreferrer">
+          <a className="btn btn-red" href={mostrar.facebook} target="_blank" rel="noreferrer">
             Facebook
           </a>
-          <a className="btn btn-red" href={contacto.instagram} target="_blank" rel="noreferrer">
+          <a className="btn btn-red" href={mostrar.instagram} target="_blank" rel="noreferrer">
             Instagram
           </a>
           <a

@@ -7,6 +7,7 @@ export interface Servicio {
 }
 
 export interface Cita {
+  ci: string
   nombre: string
   apellidos: string
   edad: string
