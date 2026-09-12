@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import type { FormEvent, ReactElement } from 'react'
 import { useServicios } from '../data'
 import { useContacto } from '../contactConfig'
+import { getServicios, getClientes, getCitas } from '../api'
 import type { Servicio } from '../types'
 import type { ContactoConfig, HorarioItem } from '../contactConfig'
+import type { CitaBackend, ServicioBackend } from '../api'
 
 const formVacio = { nombre: '', descripcion: '', precio: '', moneda: 'USD' }
 
@@ -97,50 +99,6 @@ function Icono({ nombre, size = 18 }: { nombre: NombreIcono; size?: number }) {
   )
 }
 
-type EstadoOrden = 'Delivered' | 'Processing' | 'Shipped'
-
-interface OrdenEjemplo {
-  id: number
-  cliente: string
-  servicio: string
-  fecha: string
-  monto: number
-  estado: EstadoOrden
-}
-
-const ESTADOS_ORDEN: EstadoOrden[] = ['Delivered', 'Processing', 'Shipped']
-
-const CLIENTES_ORDEN: [string, string][] = [
-  ['María', 'López'], ['Carlos', 'Pérez'], ['Ana', 'García'], ['Luis', 'Martínez'],
-  ['Laura', 'Hernández'], ['Pedro', 'González'], ['Sofía', 'Ramírez'], ['Jorge', 'Torres'],
-  ['Lucía', 'Flores'], ['Andrés', 'Rivera'], ['Valentina', 'Castro'], ['Diego', 'Vargas'],
-  ['Camila', 'Rojas'], ['Miguel', 'Silva'], ['Fernanda', 'Molina'], ['Ricardo', 'Salas'],
-  ['Gabriela', 'Ortiz'], ['Sebastián', 'Mendoza'], ['Daniela', 'Navarro'], ['Felipe', 'Aguilar'],
-  ['Carolina', 'Peña'], ['Martín', 'Reyes'], ['Isabella', 'Vega'], ['Tomás', 'Cabrera'],
-  ['Antonella', 'Delgado'], ['Emilio', 'Campos'], ['Regina', 'Núñez'], ['Nicolás', 'Fuentes'],
-]
-
-const SERVICIOS_PRECIO: { nombre: string; precio: number }[] = [
-  { nombre: 'Blanqueamiento dental', precio: 20 },
-  { nombre: 'Limpieza dental', precio: 30 },
-  { nombre: 'Extracción dental', precio: 25 },
-  { nombre: 'Relleno / Empaste', precio: 35 },
-  { nombre: 'Ortodoncia / Brackets', precio: 300 },
-  { nombre: 'Consulta general', precio: 15 },
-]
-
-const ORDENES_EJEMPLO: OrdenEjemplo[] = CLIENTES_ORDEN.map(([nombre, apellidos], i) => {
-  const servicio = SERVICIOS_PRECIO[i % SERVICIOS_PRECIO.length]
-  return {
-    id: 1000 + i,
-    cliente: `${nombre} ${apellidos}`,
-    servicio: servicio.nombre,
-    fecha: `2026-09-${String((i % 20) + 1).padStart(2, '0')}`,
-    monto: servicio.precio,
-    estado: ESTADOS_ORDEN[i % ESTADOS_ORDEN.length],
-  }
-})
-
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
@@ -148,13 +106,12 @@ const MESES = [
 
 const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
-function Calendario() {
+function Calendario({ fechasConCita }: { fechasConCita: Set<string> }) {
   const hoy = new Date()
   const anio = hoy.getFullYear()
   const mes = hoy.getMonth()
   const primerDia = new Date(anio, mes, 1).getDay()
   const diasEnMes = new Date(anio, mes + 1, 0).getDate()
-  const fechasConCita = new Set(ORDENES_EJEMPLO.map((o) => o.fecha))
 
   const celdas: (number | null)[] = Array(primerDia).fill(null)
   for (let d = 1; d <= diasEnMes; d++) celdas.push(d)
@@ -194,11 +151,7 @@ function Calendario() {
   )
 }
 
-function GraficoCitas() {
-  const datos = SERVICIOS_PRECIO.map((s) => ({
-    nombre: s.nombre,
-    cantidad: ORDENES_EJEMPLO.filter((o) => o.servicio === s.nombre).length,
-  }))
+function GraficoCitas({ datos }: { datos: { nombre: string; cantidad: number }[] }) {
   const maximo = Math.max(...datos.map((d) => d.cantidad), 1)
 
   return (
@@ -228,6 +181,15 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   const [login, setLogin] = useState({ usuario: '', contraseña: '' })
   const [errorLogin, setErrorLogin] = useState('')
   const [seccion, setSeccion] = useState<Seccion>('dashboard')
+  const [dashboard, setDashboard] = useState<{
+    totalServicios: number
+    totalClientes: number
+    citas: CitaBackend[]
+    servicios: ServicioBackend[]
+  } | null>(null)
+  const [cargandoDashboard, setCargandoDashboard] = useState(false)
+  const [errorDashboard, setErrorDashboard] = useState('')
+  const [revisionDashboard, setRevisionDashboard] = useState(0)
 
   const { contacto, actualizarContacto, restablecerContacto } = useContacto()
   const [formContacto, setFormContacto] = useState<ContactoConfig>(contacto)
@@ -348,6 +310,37 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
     }
   }, [seccion, contacto])
 
+  useEffect(() => {
+    if (!autenticado) return
+    let activo = true
+
+    async function cargarDashboard() {
+      try {
+        const [servicios, clientes, citas] = await Promise.all([
+          getServicios(),
+          getClientes(),
+          getCitas(),
+        ])
+        if (!activo) return
+        setDashboard({ totalServicios: servicios.length, totalClientes: clientes.length, citas, servicios })
+        setErrorDashboard('')
+      } catch {
+        if (activo) setErrorDashboard('No se pudo conectar con el backend.')
+      } finally {
+        if (activo) setCargandoDashboard(false)
+      }
+    }
+
+    setCargandoDashboard(true)
+    cargarDashboard()
+    const intervalo = setInterval(cargarDashboard, 10000)
+
+    return () => {
+      activo = false
+      clearInterval(intervalo)
+    }
+  }, [autenticado, revisionDashboard])
+
   function cambiarCampoContacto(campo: keyof ContactoConfig, valor: string) {
     setFormContacto((prev) => ({ ...prev, [campo]: valor }))
   }
@@ -384,36 +377,78 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
 
   function renderSeccion() {
     switch (seccion) {
-      case 'dashboard':
+      case 'dashboard': {
+        const fechasConCita = new Set(
+          (dashboard?.citas ?? []).map((c) => c.fecha.slice(0, 10)),
+        )
+
+        const serviciosPorId = new Map(
+          (dashboard?.servicios ?? []).map((s) => [s._id, s.nombreServicio]),
+        )
+        const conteoPorServicio = new Map<string, number>()
+        for (const cita of dashboard?.citas ?? []) {
+          const nombre = serviciosPorId.get(cita.servicio) ?? cita.servicio
+          conteoPorServicio.set(nombre, (conteoPorServicio.get(nombre) ?? 0) + 1)
+        }
+        const datosGrafico = [...conteoPorServicio.entries()].map(
+          ([nombre, cantidad]) => ({ nombre, cantidad }),
+        )
+
+        const totalServicios = dashboard?.totalServicios
+        const totalClientes = dashboard?.totalClientes
+        const totalCitas = dashboard?.citas.length
+
         return (
           <div className="admin-seccion dashboard-seccion">
-            <div className="resumen-tarjetas">
-              <div className="resumen-card">
-                <span className="resumen-label">Total de servicios</span>
-                <span className="resumen-valor">{servicios.length}</span>
-              </div>
-              <div className="resumen-card">
-                <span className="resumen-label">Total de clientes</span>
-                <span className="resumen-valor">{CLIENTES_ORDEN.length}</span>
-              </div>
-              <div className="resumen-card">
-                <span className="resumen-label">Total de citas</span>
-                <span className="resumen-valor">{ORDENES_EJEMPLO.length}</span>
-              </div>
-            </div>
+            {cargandoDashboard && !dashboard && (
+              <p className="empty">Cargando datos del panel...</p>
+            )}
 
-            <div className="dashboard-grid">
-              <div className="panel panel-calendario">
-                <h3 className="panel-titulo">Calendario de citas</h3>
-                <Calendario />
+            {errorDashboard && !dashboard && (
+              <div className="login-error" role="alert">
+                {errorDashboard}
+                <button
+                  type="button"
+                  className="btn btn-small btn-outline"
+                  onClick={() => setRevisionDashboard((prev) => prev + 1)}
+                >
+                  Reintentar
+                </button>
               </div>
-              <div className="panel panel-grafico">
-                <h3 className="panel-titulo">Citas por servicio</h3>
-                <GraficoCitas />
-              </div>
-            </div>
+            )}
+
+            {dashboard && (
+              <>
+                <div className="resumen-tarjetas">
+                  <div className="resumen-card">
+                    <span className="resumen-label">Total de servicios</span>
+                    <span className="resumen-valor">{totalServicios ?? '—'}</span>
+                  </div>
+                  <div className="resumen-card">
+                    <span className="resumen-label">Total de clientes</span>
+                    <span className="resumen-valor">{totalClientes ?? '—'}</span>
+                  </div>
+                  <div className="resumen-card">
+                    <span className="resumen-label">Total de citas</span>
+                    <span className="resumen-valor">{totalCitas ?? 0}</span>
+                  </div>
+                </div>
+
+                <div className="dashboard-grid">
+                  <div className="panel panel-calendario">
+                    <h3 className="panel-titulo">Calendario de citas</h3>
+                    <Calendario fechasConCita={fechasConCita} />
+                  </div>
+                  <div className="panel panel-grafico">
+                    <h3 className="panel-titulo">Citas por servicio</h3>
+                    <GraficoCitas datos={datosGrafico} />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )
+      }
 
       case 'servicios':
         return (
