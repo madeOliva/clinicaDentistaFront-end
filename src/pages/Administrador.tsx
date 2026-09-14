@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent, ReactElement } from 'react'
-import { useServicios } from '../data'
 import { useContacto, VALORES_INICIALES } from '../contactConfig'
-import { getServicios, getClientes, getCitas } from '../api'
+import {
+  getServicios,
+  getMonedas,
+  getClientes,
+  getCitas,
+  createServicio,
+  updateServicio,
+  deleteServicio,
+} from '../api'
 import type { Servicio } from '../types'
 import type { ContactoConfig, HorarioItem } from '../contactConfig'
-import type { CitaBackend, ServicioBackend } from '../api'
+import type { CitaBackend, ClienteBackend, MonedaBackend, ServicioBackend } from '../api'
 
 const formVacio = { nombre: '', descripcion: '', precio: '', moneda: 'USD' }
 
@@ -112,6 +119,11 @@ const MESES = [
 
 const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
+function formatearFecha(fecha: string): string {
+  const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+  return `${dia}/${mes}/${anio}`
+}
+
 function Calendario({ fechasConCita }: { fechasConCita: Set<string> }) {
   const hoy = new Date()
   const anio = hoy.getFullYear()
@@ -178,7 +190,6 @@ function GraficoCitas({ datos }: { datos: { nombre: string; cantidad: number }[]
 }
 
 export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: () => void }) {
-  const { servicios, agregarServicio, modificarServicio, eliminarServicio } = useServicios()
   const [form, setForm] = useState(formVacio)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [editando, setEditando] = useState<Servicio | null>(null)
@@ -187,12 +198,12 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   const [login, setLogin] = useState({ usuario: '', contraseña: '' })
   const [errorLogin, setErrorLogin] = useState('')
   const [seccion, setSeccion] = useState<Seccion>('dashboard')
-  const [dashboard, setDashboard] = useState<{
-    totalServicios: number
-    totalClientes: number
-    citas: CitaBackend[]
-    servicios: ServicioBackend[]
-  } | null>(null)
+  const [servicios, setServicios] = useState<Servicio[]>([])
+  const [serviciosBackend, setServiciosBackend] = useState<ServicioBackend[]>([])
+  const [monedas, setMonedas] = useState<MonedaBackend[]>([])
+  const [clientes, setClientes] = useState<ClienteBackend[]>([])
+  const [citas, setCitas] = useState<CitaBackend[]>([])
+  const [datosCargados, setDatosCargados] = useState(false)
   const [cargandoDashboard, setCargandoDashboard] = useState(false)
   const [errorDashboard, setErrorDashboard] = useState('')
   const [revisionDashboard, setRevisionDashboard] = useState(0)
@@ -220,6 +231,161 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
     setAutenticado(false)
     setSeccion('dashboard')
   }
+
+  function idMoneda(moneda: string): string | undefined {
+    return monedas.find((m) => m.tipoMoneda === moneda)?._id
+  }
+
+  async function agregarServicio(s: Omit<Servicio, 'id'>) {
+    const monedaServicio = idMoneda(s.moneda || 'USD')
+    if (!monedaServicio) throw new Error('Moneda no válida')
+    await createServicio({
+      nombreServicio: s.nombre,
+      descripcionServicio: s.descripcion,
+      precioServicio: s.precio,
+      monedaServicio,
+    })
+  }
+
+  async function modificarServicio(s: Servicio) {
+    const monedaServicio = idMoneda(s.moneda)
+    if (!monedaServicio) throw new Error('Moneda no válida')
+    await updateServicio(s.id, {
+      nombreServicio: s.nombre,
+      descripcionServicio: s.descripcion,
+      precioServicio: s.precio,
+      monedaServicio,
+    })
+  }
+
+  async function eliminarServicio(id: string) {
+    await deleteServicio(id)
+  }
+
+  async function manejarEnvio(e: FormEvent) {
+    e.preventDefault()
+    const precio = Number(form.precio)
+    if (!form.nombre || Number.isNaN(precio) || precio < 0) return
+
+    try {
+      await agregarServicio({
+        nombre: form.nombre,
+        descripcion: form.descripcion,
+        precio,
+        moneda: form.moneda || 'USD',
+      })
+      setForm(formVacio)
+      setMostrarFormulario(false)
+      setRevisionDashboard((prev) => prev + 1)
+    } catch {
+      setModalConfig({
+        tipo: 'error',
+        titulo: 'Error al guardar',
+        mensaje: 'No se pudo guardar el servicio. Verifica que el backend esté disponible.',
+      })
+    }
+  }
+
+  function abrirEditar(s: Servicio) {
+    setEditando(s)
+    setFormEdit({ nombre: s.nombre, descripcion: s.descripcion, precio: String(s.precio), moneda: s.moneda })
+  }
+
+  async function guardarEdicion(e: FormEvent) {
+    e.preventDefault()
+    if (!editando) return
+    const precio = Number(formEdit.precio)
+    if (!formEdit.nombre || Number.isNaN(precio) || precio < 0) return
+
+    try {
+      await modificarServicio({
+        ...editando,
+        nombre: formEdit.nombre,
+        descripcion: formEdit.descripcion,
+        precio,
+        moneda: formEdit.moneda,
+      })
+      setEditando(null)
+      setFormEdit(formVacio)
+      setRevisionDashboard((prev) => prev + 1)
+    } catch {
+      setModalConfig({
+        tipo: 'error',
+        titulo: 'Error al guardar',
+        mensaje: 'No se pudo modificar el servicio. Verifica que el backend esté disponible.',
+      })
+    }
+  }
+
+  async function eliminarServicioClick(id: string) {
+    try {
+      await eliminarServicio(id)
+      setRevisionDashboard((prev) => prev + 1)
+    } catch {
+      setModalConfig({
+        tipo: 'error',
+        titulo: 'Error al eliminar',
+        mensaje: 'No se pudo eliminar el servicio. Verifica que el backend esté disponible.',
+      })
+    }
+  }
+
+  function cancelar() {
+    setEditando(null)
+    setFormEdit(formVacio)
+  }
+
+  useEffect(() => {
+    if (seccion === 'configuracion' && !editandoConfig) {
+      setFormContacto(contacto)
+    }
+  }, [seccion, contacto, editandoConfig])
+
+  useEffect(() => {
+    if (!autenticado) return
+    let activo = true
+
+    async function cargarDatos() {
+      try {
+        const [serviciosData, monedasData, clientesData, citasData] = await Promise.all([
+          getServicios(),
+          getMonedas(),
+          getClientes(),
+          getCitas(),
+        ])
+        if (!activo) return
+        const monedaPorId = new Map(monedasData.map((m) => [m._id, m.tipoMoneda]))
+        setMonedas(monedasData)
+        setServiciosBackend(serviciosData)
+        setServicios(
+          serviciosData.map((s) => ({
+            id: s._id,
+            nombre: s.nombreServicio,
+            descripcion: s.descripcionServicio,
+            precio: s.precioServicio,
+            moneda: monedaPorId.get(s.monedaServicio) ?? '',
+          })),
+        )
+        setClientes(clientesData)
+        setCitas(citasData)
+        setDatosCargados(true)
+        setErrorDashboard('')
+      } catch {
+        if (activo) setErrorDashboard('No se pudo conectar con el backend.')
+      } finally {
+        if (activo) setCargandoDashboard(false)
+      }
+    }
+
+    setCargandoDashboard(true)
+    cargarDatos()
+    const intervalo = setInterval(cargarDatos, 10000)
+
+    return () => {
+      activo = false
+      clearInterval(intervalo)
+    }
+  }, [autenticado, revisionDashboard])
 
   if (!autenticado) {
     return (
@@ -268,85 +434,6 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
       </section>
     )
   }
-
-  function manejarEnvio(e: FormEvent) {
-    e.preventDefault()
-    const precio = Number(form.precio)
-    if (!form.nombre || Number.isNaN(precio) || precio < 0) return
-
-    agregarServicio({
-      nombre: form.nombre,
-      descripcion: form.descripcion,
-      precio,
-      moneda: form.moneda || 'USD',
-    })
-    setForm(formVacio)
-    setMostrarFormulario(false)
-  }
-
-  function abrirEditar(s: Servicio) {
-    setEditando(s)
-    setFormEdit({ nombre: s.nombre, descripcion: s.descripcion, precio: String(s.precio), moneda: s.moneda })
-  }
-
-  function guardarEdicion(e: FormEvent) {
-    e.preventDefault()
-    if (!editando) return
-    const precio = Number(formEdit.precio)
-    if (!formEdit.nombre || Number.isNaN(precio) || precio < 0) return
-
-    modificarServicio({
-      ...editando,
-      nombre: formEdit.nombre,
-      descripcion: formEdit.descripcion,
-      precio,
-      moneda: formEdit.moneda,
-    })
-    setEditando(null)
-    setFormEdit(formVacio)
-  }
-
-  function cancelar() {
-    setEditando(null)
-    setFormEdit(formVacio)
-  }
-
-  useEffect(() => {
-    if (seccion === 'configuracion' && !editandoConfig) {
-      setFormContacto(contacto)
-    }
-  }, [seccion, contacto, editandoConfig])
-
-  useEffect(() => {
-    if (!autenticado) return
-    let activo = true
-
-    async function cargarDashboard() {
-      try {
-        const [servicios, clientes, citas] = await Promise.all([
-          getServicios(),
-          getClientes(),
-          getCitas(),
-        ])
-        if (!activo) return
-        setDashboard({ totalServicios: servicios.length, totalClientes: clientes.length, citas, servicios })
-        setErrorDashboard('')
-      } catch {
-        if (activo) setErrorDashboard('No se pudo conectar con el backend.')
-      } finally {
-        if (activo) setCargandoDashboard(false)
-      }
-    }
-
-    setCargandoDashboard(true)
-    cargarDashboard()
-    const intervalo = setInterval(cargarDashboard, 10000)
-
-    return () => {
-      activo = false
-      clearInterval(intervalo)
-    }
-  }, [autenticado, revisionDashboard])
 
   function cambiarCampoContacto(campo: keyof ContactoConfig, valor: string) {
     setEditandoConfig(true)
@@ -404,15 +491,13 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   function renderSeccion() {
     switch (seccion) {
       case 'dashboard': {
-        const fechasConCita = new Set(
-          (dashboard?.citas ?? []).map((c) => c.fecha.slice(0, 10)),
-        )
+        const fechasConCita = new Set(citas.map((c) => c.fecha.slice(0, 10)))
 
         const serviciosPorId = new Map(
-          (dashboard?.servicios ?? []).map((s) => [s._id, s.nombreServicio]),
+          serviciosBackend.map((s) => [s._id, s.nombreServicio]),
         )
         const conteoPorServicio = new Map<string, number>()
-        for (const cita of dashboard?.citas ?? []) {
+        for (const cita of citas) {
           const nombre = serviciosPorId.get(cita.servicio) ?? cita.servicio
           conteoPorServicio.set(nombre, (conteoPorServicio.get(nombre) ?? 0) + 1)
         }
@@ -420,17 +505,17 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
           ([nombre, cantidad]) => ({ nombre, cantidad }),
         )
 
-        const totalServicios = dashboard?.totalServicios
-        const totalClientes = dashboard?.totalClientes
-        const totalCitas = dashboard?.citas.length
+        const totalServicios = servicios.length
+        const totalClientes = clientes.length
+        const totalCitas = citas.length
 
         return (
           <div className="admin-seccion dashboard-seccion">
-            {cargandoDashboard && !dashboard && (
+            {cargandoDashboard && !datosCargados && (
               <p className="empty">Cargando datos del panel...</p>
             )}
 
-            {errorDashboard && !dashboard && (
+            {errorDashboard && !datosCargados && (
               <div className="login-error" role="alert">
                 {errorDashboard}
                 <button
@@ -443,7 +528,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
               </div>
             )}
 
-            {dashboard && (
+            {datosCargados && (
               <>
                 <div className="resumen-tarjetas">
                   <div className="resumen-card">
@@ -556,7 +641,11 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
             <div className="lista-servicios">
               <h2>Servicios actuales</h2>
               {servicios.length === 0 ? (
-                <p className="empty">No hay servicios registrados.</p>
+                <p className="empty">
+                  {cargandoDashboard && !datosCargados
+                    ? 'Cargando servicios...'
+                    : 'No hay servicios registrados.'}
+                </p>
               ) : (
                 <ul>
                   {servicios.map((s) => (
@@ -574,7 +663,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                         </button>
                         <button
                           className="btn btn-small btn-danger"
-                          onClick={() => eliminarServicio(s.id)}
+                          onClick={() => eliminarServicioClick(s.id)}
                         >
                           Eliminar
                         </button>
@@ -670,60 +759,85 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
               <table className="orders-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
+                    <th>CI</th>
                     <th>Cliente</th>
                     <th>Teléfono</th>
-                    <th>Correo</th>
-                    <th>Última cita</th>
-                    <th>Estado</th>
+                    <th>Dirección</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td className="table-empty" colSpan={6}>
-                      No hay clientes registrados.
-                    </td>
-                  </tr>
+                  {clientes.length === 0 ? (
+                    <tr>
+                      <td className="table-empty" colSpan={4}>
+                        {cargandoDashboard && !datosCargados
+                          ? 'Cargando clientes...'
+                          : 'No hay clientes registrados.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    clientes.map((c) => (
+                      <tr key={c._id}>
+                        <td>{c.ci}</td>
+                        <td>
+                          {c.nombre} {c.apellidos}
+                        </td>
+                        <td>{c.telefono}</td>
+                        <td>{c.direccion || '—'}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         )
 
-      case 'citas':
+      case 'citas': {
+        const clientePorId = new Map(
+          clientes.map((c) => [c._id, `${c.nombre} ${c.apellidos}`]),
+        )
+        const servicioPorId = new Map(
+          serviciosBackend.map((s) => [s._id, s.nombreServicio]),
+        )
+
         return (
           <div className="admin-seccion">
             <header className="orders-header">
               <h2 className="orders-subtitle">Citas</h2>
-              <div className="filter-tabs">
-                <button className="filter-tab active" type="button">
-                  Allorders
-                </button>
-              </div>
             </header>
             <div className="orders-table-wrap">
               <table className="orders-table">
                 <thead>
                   <tr>
-                    <th>Pedido</th>
                     <th>Cliente</th>
                     <th>Servicio</th>
                     <th>Fecha</th>
-                    <th>Total</th>
-                    <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td className="table-empty" colSpan={6}>
-                      No hay citas registradas.
-                    </td>
-                  </tr>
+                  {citas.length === 0 ? (
+                    <tr>
+                      <td className="table-empty" colSpan={3}>
+                        {cargandoDashboard && !datosCargados
+                          ? 'Cargando citas...'
+                          : 'No hay citas registradas.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    citas.map((cita) => (
+                      <tr key={cita._id}>
+                        <td>{clientePorId.get(cita.cliente) ?? cita.cliente}</td>
+                        <td>{servicioPorId.get(cita.servicio) ?? cita.servicio}</td>
+                        <td>{formatearFecha(cita.fecha)}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         )
+      }
 
       case 'entrada':
         return (

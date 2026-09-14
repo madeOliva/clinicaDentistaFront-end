@@ -76,6 +76,14 @@ export interface ConfiguracionBackend {
 }
 
 
+export interface ServicioNuevo {
+  nombreServicio: string
+  descripcionServicio: string
+  precioServicio: number
+  monedaServicio: string
+}
+
+
 export async function getServicios(): Promise<ServicioBackend[]> {
   const { data } = await api.get<ServicioBackend[]>('/servicios')
   return data
@@ -90,6 +98,24 @@ export async function getMonedas(): Promise<MonedaBackend[]> {
 
 export async function getClientes(): Promise<ClienteBackend[]> {
   const { data } = await api.get<ClienteBackend[]>('/cliente')
+  return data
+}
+
+export async function getClientePorCi(ci: string): Promise<ClienteBackend> {
+  const { data } = await api.get<ClienteBackend>(
+    `/cliente/ci/${encodeURIComponent(ci)}`,
+  )
+  return data
+}
+
+export async function createCliente(datos: {
+  ci: string
+  nombre: string
+  apellidos: string
+  telefono: string
+  direccion?: string
+}): Promise<ClienteBackend> {
+  const { data } = await api.post<ClienteBackend>('/cliente', datos)
   return data
 }
 
@@ -123,4 +149,24 @@ export async function updateConfiguracion(
 ): Promise<ConfiguracionBackend> {
   const { data } = await api.patch<ConfiguracionBackend>('/configuracion', config)
   return data
+}
+
+
+export async function createServicio(datos: ServicioNuevo): Promise<ServicioBackend> {
+  const { data } = await api.post<ServicioBackend>('/servicios', datos)
+  return data
+}
+
+
+export async function updateServicio(
+  id: string,
+  datos: Partial<ServicioNuevo>,
+): Promise<ServicioBackend> {
+  const { data } = await api.patch<ServicioBackend>(`/servicios/${id}`, datos)
+  return data
+}
+
+
+export async function deleteServicio(id: string): Promise<void> {
+  await api.delete(`/servicios/${id}`)
 }

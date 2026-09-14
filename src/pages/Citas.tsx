@@ -1,112 +1,85 @@
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
-import { useServicios } from '../data'
 import { useContacto, whatsappLink } from '../contactConfig'
 import { PAISES } from '../paises'
-import { getServicios, getClientes, crearCliente, crearCita } from '../api'
-import type { ClienteBackend, ServicioBackend } from '../api'
+import { getServicios, getClientePorCi, createCliente } from '../api'
+import type { ServicioBackend } from '../api'
 import type { Cita } from '../types'
 
-const vacio: Cita = {
-  ci: '',
-  nombre: '',
-  apellidos: '',
-  edad: '',
-  celular: '',
-  servicio: '',
-  fecha: '',
-}
+const vacio: Cita = { ci: '', nombre: '', apellidos: '', edad: '', celular: '', servicio: '', fecha: '' }
 
 export default function Citas({ servicioInicial = '' }: { servicioInicial?: string }) {
-  const { servicios } = useServicios()
   const { contacto } = useContacto()
-  const [form, setForm] = useState<Cita>({ ...vacio, servicio: servicioInicial })
+  const [form, setForm] = useState<Cita>({ ...vacio })
+  const [servicios, setServicios] = useState<ServicioBackend[]>([])
+  const [cargandoServicios, setCargandoServicios] = useState(true)
   const [enviado, setEnviado] = useState(false)
   const [pais, setPais] = useState('+53')
-  const [serviciosBackend, setServiciosBackend] = useState<ServicioBackend[]>([])
-  const [clientesBackend, setClientesBackend] = useState<ClienteBackend[]>([])
-  const [error, setError] = useState('')
 
   const hoy = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
     let activo = true
-
-    Promise.all([getServicios(), getClientes()])
-      .then(([servs, clis]) => {
+    getServicios()
+      .then((data) => {
         if (!activo) return
-        setServiciosBackend(servs)
-        setClientesBackend(clis)
+        setServicios(data)
+        if (servicioInicial) {
+          const match = data.find((s) => s.nombreServicio === servicioInicial)
+          if (match) setForm((f) => ({ ...f, servicio: match._id }))
+        }
       })
-      .catch(() => {})
-
-    return () => {
-      activo = false
-    }
-  }, [])
-
-  const opcionesServicio =
-    serviciosBackend.length > 0
-      ? serviciosBackend.map((s) => ({ key: s._id, nombre: s.nombreServicio }))
-      : servicios.map((s) => ({ key: s.id, nombre: s.nombre }))
+      .catch(() => {
+        if (activo) setServicios([])
+      })
+      .finally(() => {
+        if (activo) setCargandoServicios(false)
+      })
+    return () => { activo = false }
+  }, [servicioInicial])
 
   function cambiar(campo: keyof Cita, valor: string) {
     setForm((f) => ({ ...f, [campo]: valor }))
   }
 
-  async function registrarEnBackend() {
-    const servicioId = serviciosBackend.find((s) => s.nombreServicio === form.servicio)?._id
-    if (!servicioId) {
-      throw new Error('servicio-no-encontrado')
-    }
-
-    const ci = form.ci.trim()
-    const telefono = `${pais} ${form.celular}`
-
-    let clienteId = clientesBackend.find((c) => c.ci === ci)?._id
-    if (!clienteId) {
-      try {
-        const nuevo = await crearCliente({ ci, nombre: form.nombre, apellidos: form.apellidos, telefono })
-        clienteId = nuevo._id
-        setClientesBackend((prev) => [...prev, nuevo])
-      } catch {
-        const existentes = await getClientes()
-        const existente = existentes.find((c) => c.ci === ci)
-        if (existente) {
-          clienteId = existente._id
-          setClientesBackend(existentes)
-        } else {
-          throw new Error('no-se-pudo-cliente')
-        }
-      }
-    }
-
-    await crearCita({ cliente: clienteId, servicio: servicioId, fecha: `${form.fecha}T10:00:00.000Z` })
-  }
-
   async function manejarEnvio(e: FormEvent) {
     e.preventDefault()
-    setError('')
     const celularCompleto = `${pais} ${form.celular}`
-    const mensaje =
-      `Hola ${contacto.name}, deseo agendar una cita.\n\n` +
-      `👤 Nombre: ${form.nombre}\n` +
-      `👤 Apellidos: ${form.apellidos}\n` +
-      `🎂 Edad: ${form.edad}\n` +
-      `📱 Celular: ${celularCompleto}\n` +
-      `🦷 Servicio: ${form.servicio}\n` +
-      `📅 Fecha deseada: ${form.fecha}\n\n` +
-      `¿Está disponible mi fecha? De no ser posible, por favor indíqueme un turno en otra fecha.`
-    window.open(whatsappLink(contacto.whatsapp, mensaje), '_blank')
+    const servicioSeleccionado = servicios.find((s) => s._id === form.servicio)
+    const nombreServicio = servicioSeleccionado?.nombreServicio ?? form.servicio
 
     try {
-      await registrarEnBackend()
-    } catch {
-      setError('No se pudo registrar la cita en el sistema. Tu solicitud fue enviada por WhatsApp.')
-    }
+      const ciLimpio = form.ci.trim()
+      try {
+        await getClientePorCi(ciLimpio)
+      } catch {
+        await createCliente({
+          ci: ciLimpio,
+          nombre: form.nombre,
+          apellidos: form.apellidos,
+          telefono: celularCompleto,
+        })
+      }
 
-    setEnviado(true)
-    setForm(vacio)
+      const mensaje =
+        `Hola ${contacto.name}, deseo agendar una cita.\n\n` +
+        `🪪 CI: ${form.ci}\n` +
+        `👤 Nombre: ${form.nombre}\n` +
+        `👤 Apellidos: ${form.apellidos}\n` +
+        `🎂 Edad: ${form.edad}\n` +
+        `📱 Celular: ${celularCompleto}\n` +
+        `🦷 Servicio: ${nombreServicio}\n` +
+        `📅 Fecha deseada: ${form.fecha}\n\n` +
+        `¿Está disponible mi fecha? De no ser posible, por favor indíqueme un turno en otra fecha.`
+      window.open(whatsappLink(contacto.whatsapp, mensaje), '_blank')
+      setEnviado(true)
+      setForm({ ...vacio })
+    } catch {
+      // Si no hay backend disponible, aún así abrimos WhatsApp para no bloquear la solicitud.
+      window.open(whatsappLink(contacto.whatsapp, `Hola ${contacto.name}, deseo agendar una cita.\n\n🪪 CI: ${form.ci}\n👤 Nombre: ${form.nombre}\n👤 Apellidos: ${form.apellidos}\n🎂 Edad: ${form.edad}\n📱 Celular: ${celularCompleto}\n🦷 Servicio: ${nombreServicio}\n📅 Fecha deseada: ${form.fecha}\n\n¿Está disponible mi fecha? De no ser posible, por favor indíqueme un turno en otra fecha.`), '_blank')
+      setEnviado(true)
+      setForm({ ...vacio })
+    }
   }
 
   return (
@@ -123,22 +96,16 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
         </div>
       )}
 
-      {error && (
-        <div className="login-error" role="alert">
-          {error}
-        </div>
-      )}
-
       <form className="cita-form" onSubmit={manejarEnvio}>
         <div className="campo">
-          <label htmlFor="ci">Cédula de identidad</label>
+          <label htmlFor="ci">Carné de identidad</label>
           <input
             id="ci"
             type="text"
             required
             value={form.ci}
             onChange={(e) => cambiar('ci', e.target.value)}
-            placeholder="Tu CI o documento de identidad"
+            placeholder="Ej. 03074563666"
           />
         </div>
 
@@ -216,11 +183,11 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
             onChange={(e) => cambiar('servicio', e.target.value)}
           >
             <option value="" disabled>
-              Selecciona un servicio
+              {cargandoServicios ? 'Cargando servicios...' : 'Selecciona un servicio'}
             </option>
-            {opcionesServicio.map((s) => (
-              <option key={s.key} value={s.nombre}>
-                {s.nombre}
+            {servicios.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.nombreServicio}
               </option>
             ))}
           </select>
