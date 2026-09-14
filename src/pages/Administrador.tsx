@@ -14,7 +14,7 @@ import type { Servicio } from '../types'
 import type { ContactoConfig, HorarioItem } from '../contactConfig'
 import type { CitaBackend, ClienteBackend, MonedaBackend, ServicioBackend } from '../api'
 
-const formVacio = { nombre: '', descripcion: '', precio: '', moneda: 'USD', disponible: true }
+const formVacio = { nombre: '', descripcion: '', precio: '', moneda: '', disponible: true }
 
 interface ModalResultado {
   tipo: 'exito' | 'error'
@@ -237,7 +237,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   }
 
   async function agregarServicio(s: Omit<Servicio, 'id'>) {
-    const monedaServicio = idMoneda(s.moneda || 'USD')
+    const monedaServicio = idMoneda(s.moneda)
     if (!monedaServicio) throw new Error('Moneda no válida')
     await createServicio({
       nombreServicio: s.nombre,
@@ -274,7 +274,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
         nombre: form.nombre,
         descripcion: form.descripcion,
         precio,
-        moneda: form.moneda || 'USD',
+        moneda: form.moneda || monedas[0]?.tipoMoneda || '',
         disponible: form.disponible,
       })
       setForm(formVacio)
@@ -586,79 +586,97 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
             </div>
 
             {mostrarFormulario && (
-              <form className="servicio-form" onSubmit={manejarEnvio}>
-                <h2>Agregar servicio</h2>
-
-                <div className="campo">
-                  <label htmlFor="s-nombre">Nombre del servicio</label>
-                  <input
-                    id="s-nombre"
-                    type="text"
-                    required
-                    value={form.nombre}
-                    onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                    placeholder="Ej. Blanqueamiento dental"
-                  />
-                </div>
-
-                <div className="campo">
-                  <label htmlFor="s-desc">Descripción</label>
-                  <textarea
-                    id="s-desc"
-                    value={form.descripcion}
-                    onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-                    placeholder="Breve descripción del servicio"
-                  />
-                </div>
-
-                <div className="campo-row">
-                  <div className="campo">
-                    <label htmlFor="s-precio">Precio</label>
-                    <input
-                      id="s-precio"
-                      type="number"
-                      required
-                      min={0}
-                      step="0.01"
-                      value={form.precio}
-                      onChange={(e) => setForm({ ...form, precio: e.target.value })}
-                      placeholder="20"
-                    />
+              <div className="modal-overlay" onClick={() => { setMostrarFormulario(false); setForm(formVacio) }}>
+                <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2>Agregar servicio</h2>
+                    <button className="modal-close" onClick={() => { setMostrarFormulario(false); setForm(formVacio) }} aria-label="Cerrar">
+                      ✕
+                    </button>
                   </div>
-                  <div className="campo">
-                    <label htmlFor="s-moneda">Moneda</label>
-                    <select
-                      id="s-moneda"
-                      value={form.moneda}
-                      onChange={(e) => setForm({ ...form, moneda: e.target.value })}
-                    >
-                      <option value="USD">USD</option>
-                      <option value="C$">C$</option>
-                    </select>
-                  </div>
-                </div>
 
-                <div className="campo">
-                  <label htmlFor="s-disponible">Disponibilidad</label>
-                  <select
-                    id="s-disponible"
-                    value={form.disponible ? '1' : '0'}
-                    onChange={(e) => setForm({ ...form, disponible: e.target.value === '1' })}
-                  >
-                    <option value="1">Disponible</option>
-                    <option value="0">No disponible</option>
-                  </select>
-                </div>
+                  <form onSubmit={manejarEnvio}>
+                    <div className="campo">
+                      <label htmlFor="s-nombre">Nombre del servicio</label>
+                      <input
+                        id="s-nombre"
+                        type="text"
+                        required
+                        value={form.nombre}
+                        onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                        placeholder="Ej. Blanqueamiento dental"
+                      />
+                    </div>
 
-                <div className="form-buttons">
-                  <button type="submit" className="btn btn-primary">
-                    Agregar servicio
-                  </button>
-                  <button type="button" className="btn btn-outline" onClick={() => { setMostrarFormulario(false); setForm(formVacio) }}>
-                    Cancelar
-                  </button>
+                    <div className="campo">
+                      <label htmlFor="s-desc">Descripción</label>
+                      <textarea
+                        id="s-desc"
+                        value={form.descripcion}
+                        onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+                        placeholder="Breve descripción del servicio"
+                      />
+                    </div>
+
+                    <div className="campo-row">
+                      <div className="campo">
+                        <label htmlFor="s-precio">Precio</label>
+                        <input
+                          id="s-precio"
+                          type="number"
+                          required
+                          min={0}
+                          step="0.01"
+                          value={form.precio}
+                          onChange={(e) => setForm({ ...form, precio: e.target.value })}
+                          placeholder="20"
+                        />
+                      </div>
+                      <div className="campo">
+                        <label htmlFor="s-moneda">Moneda</label>
+                        <select
+                          id="s-moneda"
+                          value={form.moneda || monedas[0]?.tipoMoneda || ''}
+                          onChange={(e) => setForm({ ...form, moneda: e.target.value })}
+                        >
+                          {monedas.length === 0 ? (
+                            <option value="" disabled>
+                              No hay monedas registradas
+                            </option>
+                          ) : (
+                            monedas.map((m) => (
+                              <option key={m._id} value={m.tipoMoneda}>
+                                {m.tipoMoneda}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="campo">
+                      <label htmlFor="s-disponible">Disponibilidad</label>
+                      <select
+                        id="s-disponible"
+                        value={form.disponible ? '1' : '0'}
+                        onChange={(e) => setForm({ ...form, disponible: e.target.value === '1' })}
+                      >
+                        <option value="1">Disponible</option>
+                        <option value="0">No disponible</option>
+                      </select>
+                    </div>
+
+                    <div className="form-buttons">
+                      <button type="submit" className="btn btn-primary">
+                        Agregar servicio
+                      </button>
+                      <button type="button" className="btn btn-outline" onClick={() => { setMostrarFormulario(false); setForm(formVacio) }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
                 </div>
-              </form>
+              </div>
             )}
 
             <div className="lista-servicios">
@@ -751,11 +769,20 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                         <label htmlFor="edit-moneda">Moneda</label>
                         <select
                           id="edit-moneda"
-                          value={formEdit.moneda}
+                          value={monedas.some((m) => m.tipoMoneda === formEdit.moneda) ? formEdit.moneda : monedas[0]?.tipoMoneda || ''}
                           onChange={(e) => setFormEdit({ ...formEdit, moneda: e.target.value })}
                         >
-                          <option value="USD">USD</option>
-                          <option value="C$">C$</option>
+                          {monedas.length === 0 ? (
+                            <option value="" disabled>
+                              No hay monedas registradas
+                            </option>
+                          ) : (
+                            monedas.map((m) => (
+                              <option key={m._id} value={m.tipoMoneda}>
+                                {m.tipoMoneda}
+                              </option>
+                            ))
+                          )}
                         </select>
                       </div>
                     </div>
