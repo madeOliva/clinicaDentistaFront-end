@@ -4,6 +4,7 @@ export interface Servicio {
   descripcion: string
   precio: number
   moneda: string
+  disponible: boolean
 }
 
 export interface Cita {

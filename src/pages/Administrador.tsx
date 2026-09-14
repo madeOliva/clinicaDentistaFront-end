@@ -14,7 +14,7 @@ import type { Servicio } from '../types'
 import type { ContactoConfig, HorarioItem } from '../contactConfig'
 import type { CitaBackend, ClienteBackend, MonedaBackend, ServicioBackend } from '../api'
 
-const formVacio = { nombre: '', descripcion: '', precio: '', moneda: 'USD' }
+const formVacio = { nombre: '', descripcion: '', precio: '', moneda: 'USD', disponible: true }
 
 interface ModalResultado {
   tipo: 'exito' | 'error'
@@ -244,6 +244,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
       descripcionServicio: s.descripcion,
       precioServicio: s.precio,
       monedaServicio,
+      disponible: s.disponible,
     })
   }
 
@@ -255,6 +256,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
       descripcionServicio: s.descripcion,
       precioServicio: s.precio,
       monedaServicio,
+      disponible: s.disponible,
     })
   }
 
@@ -273,6 +275,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
         descripcion: form.descripcion,
         precio,
         moneda: form.moneda || 'USD',
+        disponible: form.disponible,
       })
       setForm(formVacio)
       setMostrarFormulario(false)
@@ -288,7 +291,13 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
 
   function abrirEditar(s: Servicio) {
     setEditando(s)
-    setFormEdit({ nombre: s.nombre, descripcion: s.descripcion, precio: String(s.precio), moneda: s.moneda })
+    setFormEdit({
+      nombre: s.nombre,
+      descripcion: s.descripcion,
+      precio: String(s.precio),
+      moneda: s.moneda,
+      disponible: s.disponible,
+    })
   }
 
   async function guardarEdicion(e: FormEvent) {
@@ -304,6 +313,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
         descripcion: formEdit.descripcion,
         precio,
         moneda: formEdit.moneda,
+        disponible: formEdit.disponible,
       })
       setEditando(null)
       setFormEdit(formVacio)
@@ -364,6 +374,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
             descripcion: s.descripcionServicio,
             precio: s.precioServicio,
             moneda: monedaPorId.get(s.monedaServicio) ?? '',
+            disponible: s.disponible !== false,
           })),
         )
         setClientes(clientesData)
@@ -627,6 +638,18 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                   </div>
                 </div>
 
+                <div className="campo">
+                  <label htmlFor="s-disponible">Disponibilidad</label>
+                  <select
+                    id="s-disponible"
+                    value={form.disponible ? '1' : '0'}
+                    onChange={(e) => setForm({ ...form, disponible: e.target.value === '1' })}
+                  >
+                    <option value="1">Disponible</option>
+                    <option value="0">No disponible</option>
+                  </select>
+                </div>
+
                 <div className="form-buttons">
                   <button type="submit" className="btn btn-primary">
                     Agregar servicio
@@ -655,6 +678,9 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                         <span className="servicio-desc">{s.descripcion}</span>
                         <span className="precio">
                           {s.moneda} {s.precio}
+                        </span>
+                        <span className={`estado-servicio ${s.disponible ? 'disponible' : 'no-disponible'}`}>
+                          {s.disponible ? 'Disponible' : 'No disponible'}
                         </span>
                       </div>
                       <div className="servicio-acciones">
@@ -732,6 +758,18 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                           <option value="C$">C$</option>
                         </select>
                       </div>
+                    </div>
+
+                    <div className="campo">
+                      <label htmlFor="edit-disponible">Disponibilidad</label>
+                      <select
+                        id="edit-disponible"
+                        value={formEdit.disponible ? '1' : '0'}
+                        onChange={(e) => setFormEdit({ ...formEdit, disponible: e.target.value === '1' })}
+                      >
+                        <option value="1">Disponible</option>
+                        <option value="0">No disponible</option>
+                      </select>
                     </div>
 
                     <div className="form-buttons">

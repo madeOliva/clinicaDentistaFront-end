@@ -10,6 +10,7 @@
   --color-texto: #1e293b;
   --color-texto-suave: #64748b;
   --color-rojo: #dc2626;
+  --color-verde: #16a34a;
 
   color-scheme: light;
   color: var(--color-texto);

@@ -24,6 +24,7 @@ export default function Servicios({ onReservar }: { onReservar: (nombre: string)
             descripcion: s.descripcionServicio,
             precio: s.precioServicio,
             moneda: monedaPorId.get(s.monedaServicio) ?? '',
+            disponible: s.disponible !== false,
           })),
         )
         setError('')
@@ -38,7 +39,7 @@ export default function Servicios({ onReservar }: { onReservar: (nombre: string)
     }
   }, [reintentos])
 
-  const mostrar = backendServicios ?? servicios
+  const mostrar = (backendServicios ?? servicios).filter((s) => s.disponible !== false)
 
   return (
     <section className="page servicios">

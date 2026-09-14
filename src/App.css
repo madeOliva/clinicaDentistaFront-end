@@ -498,6 +498,24 @@
   font-size: 1rem;
 }
 
+.estado-servicio {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.estado-servicio.disponible {
+  color: var(--color-verde);
+  background: rgba(22, 163, 74, 0.12);
+}
+
+.estado-servicio.no-disponible {
+  color: var(--color-rojo);
+  background: rgba(220, 38, 38, 0.12);
+}
+
 .servicio-acciones {
   display: flex;
   gap: 0.5rem;

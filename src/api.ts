@@ -13,6 +13,7 @@ export interface ServicioBackend {
   descripcionServicio: string
   precioServicio: number
   monedaServicio: string
+  disponible?: boolean
 }
 
 
@@ -81,6 +82,7 @@ export interface ServicioNuevo {
   descripcionServicio: string
   precioServicio: number
   monedaServicio: string
+  disponible?: boolean
 }
 
 

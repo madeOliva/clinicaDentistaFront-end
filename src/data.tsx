@@ -6,12 +6,12 @@ import { CLINIC } from './config'
 const STORAGE_KEY = 'clinica-sonrisa-servicios'
 
 const SERVICIOS_INICIALES: Servicio[] = [
-  { id: '1', nombre: 'Blanqueamiento dental', descripcion: 'Aclara el tono de tus dientes en una sola sesión.', precio: 20, moneda: 'USD' },
-  { id: '2', nombre: 'Limpieza dental', descripcion: 'Eliminación de placa y sarro para una boca saludable.', precio: 30, moneda: 'USD' },
-  { id: '3', nombre: 'Extracción dental', descripcion: 'Extracción segura de piezas afectadas.', precio: 25, moneda: 'USD' },
-  { id: '4', nombre: 'Relleno / Empaste', descripcion: 'Reparación de caries con materiales estéticos.', precio: 35, moneda: 'USD' },
-  { id: '5', nombre: 'Ortodoncia / Brackets', descripcion: 'Corrección de la alineación de tus dientes.', precio: 300, moneda: 'USD' },
-  { id: '6', nombre: 'Consulta general', descripcion: 'Evaluación y diagnóstico completo de tu salud bucal.', precio: 15, moneda: 'USD' },
+  { id: '1', nombre: 'Blanqueamiento dental', descripcion: 'Aclara el tono de tus dientes en una sola sesión.', precio: 20, moneda: 'USD', disponible: true },
+  { id: '2', nombre: 'Limpieza dental', descripcion: 'Eliminación de placa y sarro para una boca saludable.', precio: 30, moneda: 'USD', disponible: true },
+  { id: '3', nombre: 'Extracción dental', descripcion: 'Extracción segura de piezas afectadas.', precio: 25, moneda: 'USD', disponible: true },
+  { id: '4', nombre: 'Relleno / Empaste', descripcion: 'Reparación de caries con materiales estéticos.', precio: 35, moneda: 'USD', disponible: true },
+  { id: '5', nombre: 'Ortodoncia / Brackets', descripcion: 'Corrección de la alineación de tus dientes.', precio: 300, moneda: 'USD', disponible: true },
+  { id: '6', nombre: 'Consulta general', descripcion: 'Evaluación y diagnóstico completo de tu salud bucal.', precio: 15, moneda: 'USD', disponible: true },
 ]
 
 function cargarServicios(): Servicio[] {
