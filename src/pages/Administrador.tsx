@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent, ReactElement } from 'react'
 import { useContacto, VALORES_INICIALES } from '../contactConfig'
+import CalendarioCitas from '../components/CalendarioCitas'
 import {
   getServicios,
   getMonedas,
@@ -9,10 +10,19 @@ import {
   createServicio,
   updateServicio,
   deleteServicio,
+  getDiasInhabilitados,
+  crearDiaInhabilitado,
+  eliminarDiaInhabilitado,
 } from '../api'
 import type { Servicio } from '../types'
 import type { ContactoConfig, HorarioItem } from '../contactConfig'
-import type { CitaBackend, ClienteBackend, MonedaBackend, ServicioBackend } from '../api'
+import type {
+  CitaBackend,
+  ClienteBackend,
+  DiaInhabilitadoBackend,
+  MonedaBackend,
+  ServicioBackend,
+} from '../api'
 
 const formVacio = { nombre: '', descripcion: '', precio: '', moneda: '', disponible: true }
 
@@ -112,61 +122,9 @@ function Icono({ nombre, size = 18 }: { nombre: NombreIcono; size?: number }) {
   )
 }
 
-const MESES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-]
-
-const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-
 function formatearFecha(fecha: string): string {
   const [anio, mes, dia] = fecha.slice(0, 10).split('-')
   return `${dia}/${mes}/${anio}`
-}
-
-function Calendario({ fechasConCita }: { fechasConCita: Set<string> }) {
-  const hoy = new Date()
-  const anio = hoy.getFullYear()
-  const mes = hoy.getMonth()
-  const primerDia = new Date(anio, mes, 1).getDay()
-  const diasEnMes = new Date(anio, mes + 1, 0).getDate()
-
-  const celdas: (number | null)[] = Array(primerDia).fill(null)
-  for (let d = 1; d <= diasEnMes; d++) celdas.push(d)
-
-  return (
-    <div className="calendario">
-      <div className="calendario-titulo">
-        {MESES[mes]} {anio}
-      </div>
-      <div className="calendario-semana">
-        {DIAS_SEMANA.map((d) => (
-          <span key={d} className="cal-semana-dia">
-            {d}
-          </span>
-        ))}
-      </div>
-      <div className="calendario-dias">
-        {celdas.map((d, i) => {
-          if (d === null) {
-            return <span key={`vacio-${i}`} className="cal-dia vacio" />
-          }
-          const fecha = `${anio}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-          const tieneCita = fechasConCita.has(fecha)
-          const esHoy = d === hoy.getDate()
-          return (
-            <span
-              key={d}
-              className={`cal-dia ${esHoy ? 'hoy' : ''} ${tieneCita ? 'con-cita' : ''}`}
-              title={tieneCita ? 'Tiene citas' : undefined}
-            >
-              {d}
-            </span>
-          )
-        })}
-      </div>
-    </div>
-  )
 }
 
 function GraficoCitas({ datos }: { datos: { nombre: string; cantidad: number }[] }) {
@@ -203,6 +161,9 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   const [monedas, setMonedas] = useState<MonedaBackend[]>([])
   const [clientes, setClientes] = useState<ClienteBackend[]>([])
   const [citas, setCitas] = useState<CitaBackend[]>([])
+  const [diasInhabilitados, setDiasInhabilitados] = useState<DiaInhabilitadoBackend[]>([])
+  const [diaModal, setDiaModal] = useState<{ fecha: string; inhabilitado: boolean } | null>(null)
+  const [guardandoDia, setGuardandoDia] = useState(false)
   const [datosCargados, setDatosCargados] = useState(false)
   const [cargandoDashboard, setCargandoDashboard] = useState(false)
   const [errorDashboard, setErrorDashboard] = useState('')
@@ -213,6 +174,8 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   const [editandoConfig, setEditandoConfig] = useState(false)
   const [guardandoConfig, setGuardandoConfig] = useState(false)
   const [modalConfig, setModalConfig] = useState<ModalResultado | null>(null)
+
+  const fechasInhabilitadas = new Set(diasInhabilitados.map((d) => d.fecha.slice(0, 10)))
 
   function manejarLogin(e: FormEvent) {
     e.preventDefault()
@@ -230,6 +193,36 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
     localStorage.removeItem(LOGIN_STORAGE_KEY)
     setAutenticado(false)
     setSeccion('dashboard')
+  }
+
+  function abrirModalDia(fecha: string) {
+    setDiaModal({ fecha, inhabilitado: fechasInhabilitadas.has(fecha) })
+  }
+
+  async function confirmarModalDia() {
+    if (!diaModal) return
+    setGuardandoDia(true)
+    try {
+      if (diaModal.inhabilitado) {
+        const ids = diasInhabilitados
+          .filter((d) => d.fecha.slice(0, 10) === diaModal.fecha)
+          .map((d) => d._id)
+        for (const id of ids) await eliminarDiaInhabilitado(id)
+      } else {
+        await crearDiaInhabilitado(diaModal.fecha)
+      }
+      const data = await getDiasInhabilitados()
+      setDiasInhabilitados(data)
+      setDiaModal(null)
+    } catch {
+      setModalConfig({
+        tipo: 'error',
+        titulo: 'No se pudo actualizar el día',
+        mensaje: 'No se pudo conectar con el backend. Inténtalo de nuevo.',
+      })
+    } finally {
+      setGuardandoDia(false)
+    }
   }
 
   function idMoneda(moneda: string): string | undefined {
@@ -357,11 +350,12 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
 
     async function cargarDatos() {
       try {
-        const [serviciosData, monedasData, clientesData, citasData] = await Promise.all([
+        const [serviciosData, monedasData, clientesData, citasData, diasData] = await Promise.all([
           getServicios(),
           getMonedas(),
           getClientes(),
           getCitas(),
+          getDiasInhabilitados(),
         ])
         if (!activo) return
         const monedaPorId = new Map(monedasData.map((m) => [m._id, m.tipoMoneda]))
@@ -379,6 +373,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
         )
         setClientes(clientesData)
         setCitas(citasData)
+        setDiasInhabilitados(diasData)
         setDatosCargados(true)
         setErrorDashboard('')
       } catch {
@@ -558,8 +553,15 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
 
                 <div className="dashboard-grid">
                   <div className="panel panel-calendario">
-                    <h3 className="panel-titulo">Calendario de citas</h3>
-                    <Calendario fechasConCita={fechasConCita} />
+                    <h3 className="panel-titulo">Almanaque</h3>
+                    <p className="panel-ayuda">
+                      Haz clic en un día para inhabilitarlo o habilitarlo. Los días en rojo están inhabilitados.
+                    </p>
+                    <CalendarioCitas
+                      fechasInhabilitadas={fechasInhabilitadas}
+                      resaltarConCita={fechasConCita}
+                      onSeleccionarDia={(fecha) => abrirModalDia(fecha)}
+                    />
                   </div>
                   <div className="panel panel-grafico">
                     <h3 className="panel-titulo">Citas por servicio</h3>
@@ -1162,6 +1164,51 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
 
         <div className="admin-contenido">{renderSeccion()}</div>
       </div>
+
+      {diaModal && (
+        <div className="modal-overlay" onClick={() => !guardandoDia && setDiaModal(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{diaModal.inhabilitado ? 'Habilitar día' : 'Inhabilitar día'}</h2>
+              <button
+                className="modal-close"
+                onClick={() => setDiaModal(null)}
+                aria-label="Cerrar"
+                disabled={guardandoDia}
+              >
+                ✕
+              </button>
+            </div>
+            <p className="modal-texto">
+              {diaModal.inhabilitado
+                ? `¿Deseas habilitar el día ${formatearFecha(diaModal.fecha)}? Se podrán agendar citas nuevamente.`
+                : `¿Deseas inhabilitar el día ${formatearFecha(diaModal.fecha)}? No se podrán agendar citas en esa fecha.`}
+            </p>
+            <div className="form-buttons">
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={guardandoDia}
+                onClick={confirmarModalDia}
+              >
+                {guardandoDia
+                  ? 'Guardando...'
+                  : diaModal.inhabilitado
+                    ? 'Sí, habilitar'
+                    : 'Sí, inhabilitar'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                disabled={guardandoDia}
+                onClick={() => setDiaModal(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalConfig && (
         <div className="modal-overlay" onClick={() => setModalConfig(null)}>

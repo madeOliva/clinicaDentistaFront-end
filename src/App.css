@@ -903,6 +903,99 @@
   color: #fff;
 }
 
+.cal-dia.pasado {
+  opacity: 0.45;
+}
+
+.cal-dia.inhabilitado {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+  font-weight: 700;
+  text-decoration: line-through;
+}
+
+.cal-dia.hoy.inhabilitado,
+.cal-dia.con-cita.inhabilitado,
+.cal-dia.hoy.con-cita.inhabilitado {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+  text-decoration: line-through;
+}
+
+.cal-dia.seleccionado {
+  background: #dcfce7;
+  color: #14532d;
+  border-color: #86efac;
+  font-weight: 700;
+}
+
+.calendario-dias button.cal-dia {
+  font: inherit;
+  padding: 0;
+  width: 100%;
+  cursor: pointer;
+}
+
+.calendario-dias button.cal-dia:hover:not(.inhabilitado):not(.pasado) {
+  border-color: #2563eb;
+}
+
+.calendario-dias button.cal-dia.inhabilitado:hover,
+.calendario-dias button.cal-dia.pasado:hover {
+  cursor: default;
+}
+
+.calendario-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.cal-nav {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  line-height: 1;
+  color: #475569;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.cal-nav:hover {
+  background: #f1f5f9;
+}
+
+.panel-ayuda {
+  margin: -0.5rem 0 1rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.campo-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.campo-ayuda {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.modal-texto {
+  margin: 0 0 1.25rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
 .grafico-barras {
   display: flex;
   flex-direction: column;

@@ -140,6 +140,29 @@ export async function crearCita(cita: CitaNueva): Promise<CitaBackend> {
 }
 
 
+export interface DiaInhabilitadoBackend {
+  _id: string
+  fecha: string
+}
+
+
+export async function getDiasInhabilitados(): Promise<DiaInhabilitadoBackend[]> {
+  const { data } = await api.get<DiaInhabilitadoBackend[]>('/dias-inhabilitados')
+  return data
+}
+
+
+export async function crearDiaInhabilitado(fecha: string): Promise<DiaInhabilitadoBackend> {
+  const { data } = await api.post<DiaInhabilitadoBackend>('/dias-inhabilitados', { fecha })
+  return data
+}
+
+
+export async function eliminarDiaInhabilitado(id: string): Promise<void> {
+  await api.delete(`/dias-inhabilitados/${id}`)
+}
+
+
 export async function getConfiguracion(): Promise<ConfiguracionBackend> {
   const { data } = await api.get<ConfiguracionBackend>('/configuracion')
   return data

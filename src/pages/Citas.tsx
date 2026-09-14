@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { useContacto, whatsappLink } from '../contactConfig'
 import { PAISES } from '../paises'
-import { getServicios, getClientePorCi, createCliente } from '../api'
+import CalendarioCitas from '../components/CalendarioCitas'
+import { getServicios, getClientePorCi, createCliente, crearCita, getDiasInhabilitados } from '../api'
 import type { ServicioBackend } from '../api'
 import type { Cita } from '../types'
 
@@ -15,8 +16,21 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
   const [cargandoServicios, setCargandoServicios] = useState(true)
   const [enviado, setEnviado] = useState(false)
   const [pais, setPais] = useState('+53')
+  const [fechasInhabilitadas, setFechasInhabilitadas] = useState<Set<string>>(new Set())
 
-  const hoy = new Date().toISOString().split('T')[0]
+  useEffect(() => {
+    let activo = true
+    getDiasInhabilitados()
+      .then((data) => {
+        if (activo) setFechasInhabilitadas(new Set(data.map((d) => d.fecha.slice(0, 10))))
+      })
+      .catch(() => {
+        if (activo) setFechasInhabilitadas(new Set())
+      })
+    return () => {
+      activo = false
+    }
+  }, [])
 
   useEffect(() => {
     let activo = true
@@ -50,16 +64,25 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
 
     try {
       const ciLimpio = form.ci.trim()
+      let clienteId: string
       try {
-        await getClientePorCi(ciLimpio)
+        const cliente = await getClientePorCi(ciLimpio)
+        clienteId = cliente._id
       } catch {
-        await createCliente({
+        const nuevo = await createCliente({
           ci: ciLimpio,
           nombre: form.nombre,
           apellidos: form.apellidos,
           telefono: celularCompleto,
         })
+        clienteId = nuevo._id
       }
+
+      await crearCita({
+        cliente: clienteId,
+        servicio: form.servicio,
+        fecha: form.fecha,
+      })
 
       const mensaje =
         `Hola ${contacto.name}, deseo agendar una cita.\n\n` +
@@ -92,7 +115,7 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
 
       {enviado && (
         <div className="success-box">
-          ✅ Solicitud enviada a través de WhatsApp. Te contactaremos para confirmar tu cita.
+          ✅ Tu cita quedó registrada y la solicitud se envió por WhatsApp. Te contactaremos para confirmar.
         </div>
       )}
 
@@ -194,18 +217,20 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
         </div>
 
         <div className="campo">
-          <label htmlFor="fecha">Fecha deseada</label>
-          <input
-            id="fecha"
-            type="date"
-            required
-            min={hoy}
-            value={form.fecha}
-            onChange={(e) => cambiar('fecha', e.target.value)}
+          <span className="campo-label">Fecha deseada</span>
+          <CalendarioCitas
+            fechasInhabilitadas={fechasInhabilitadas}
+            fechaSeleccionada={form.fecha}
+            bloquearInhabilitados
+            bloquearPasados
+            onSeleccionarDia={(fecha) => cambiar('fecha', fecha)}
           />
+          <p className="campo-ayuda">
+            Los días en rojo están inhabilitados. {form.fecha ? `Fecha seleccionada: ${form.fecha}` : 'Selecciona un día del calendario.'}
+          </p>
         </div>
 
-        <button type="submit" className="btn btn-primary btn-block">
+        <button type="submit" className="btn btn-primary btn-block" disabled={!form.fecha}>
           Enviar solicitud por WhatsApp
         </button>
       </form>
