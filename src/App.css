@@ -733,6 +733,11 @@
   padding: 1rem 1.25rem 1.2rem;
 }
 
+.sidebar-volver {
+  margin-bottom: 0.75rem;
+  border-left-color: #3b82f6;
+}
+
 .admin-user {
   display: flex;
   align-items: center;
@@ -1382,4 +1387,18 @@
     max-width: none;
     width: 100%;
   }
+}
+
+/* ===== Fondo para las vistas principales ===== */
+.contenido:has(.page.home),
+.contenido:has(.page.servicios),
+.contenido:has(.page.citas),
+.contenido:has(.page.contactenos) {
+  max-width: none;
+  width: 100%;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.4)),
+    url('./pictures/fondo 2.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }

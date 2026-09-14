@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent, ReactElement } from 'react'
+import fondoLogin from '../pictures/Fondo.jpeg'
 import { useContacto, VALORES_INICIALES } from '../contactConfig'
 import CalendarioCitas from '../components/CalendarioCitas'
 import {
@@ -13,6 +14,8 @@ import {
   getDiasInhabilitados,
   crearDiaInhabilitado,
   eliminarDiaInhabilitado,
+  createCliente,
+  crearCita,
 } from '../api'
 import type { Servicio } from '../types'
 import type { ContactoConfig, HorarioItem } from '../contactConfig'
@@ -25,6 +28,8 @@ import type {
 } from '../api'
 
 const formVacio = { nombre: '', descripcion: '', precio: '', moneda: '', disponible: true }
+const clienteVacio = { ci: '', nombre: '', apellidos: '', telefono: '', direccion: '' }
+const citaVacio = { cliente: '', servicio: '', fecha: '' }
 
 interface ModalResultado {
   tipo: 'exito' | 'error'
@@ -152,6 +157,12 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [editando, setEditando] = useState<Servicio | null>(null)
   const [formEdit, setFormEdit] = useState(formVacio)
+  const [formCliente, setFormCliente] = useState(clienteVacio)
+  const [mostrarFormCliente, setMostrarFormCliente] = useState(false)
+  const [guardandoCliente, setGuardandoCliente] = useState(false)
+  const [formCita, setFormCita] = useState(citaVacio)
+  const [mostrarFormCita, setMostrarFormCita] = useState(false)
+  const [guardandoCita, setGuardandoCita] = useState(false)
   const [autenticado, setAutenticado] = useState(() => localStorage.getItem(LOGIN_STORAGE_KEY) === 'true')
   const [login, setLogin] = useState({ usuario: '', contraseña: '' })
   const [errorLogin, setErrorLogin] = useState('')
@@ -282,6 +293,58 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
     }
   }
 
+  async function manejarCrearCliente(e: FormEvent) {
+    e.preventDefault()
+    if (!formCliente.ci.trim() || !formCliente.nombre.trim() || !formCliente.apellidos.trim() || !formCliente.telefono.trim()) return
+
+    setGuardandoCliente(true)
+    try {
+      await createCliente({
+        ci: formCliente.ci.trim(),
+        nombre: formCliente.nombre.trim(),
+        apellidos: formCliente.apellidos.trim(),
+        telefono: formCliente.telefono.trim(),
+        direccion: formCliente.direccion.trim() || undefined,
+      })
+      setFormCliente(clienteVacio)
+      setMostrarFormCliente(false)
+      setRevisionDashboard((prev) => prev + 1)
+    } catch {
+      setModalConfig({
+        tipo: 'error',
+        titulo: 'Error al guardar',
+        mensaje: 'No se pudo registrar el cliente. Verifica que el backend esté disponible.',
+      })
+    } finally {
+      setGuardandoCliente(false)
+    }
+  }
+
+  async function manejarCrearCita(e: FormEvent) {
+    e.preventDefault()
+    if (!formCita.cliente || !formCita.servicio || !formCita.fecha) return
+
+    setGuardandoCita(true)
+    try {
+      await crearCita({
+        cliente: formCita.cliente,
+        servicio: formCita.servicio,
+        fecha: formCita.fecha,
+      })
+      setFormCita(citaVacio)
+      setMostrarFormCita(false)
+      setRevisionDashboard((prev) => prev + 1)
+    } catch {
+      setModalConfig({
+        tipo: 'error',
+        titulo: 'Error al guardar',
+        mensaje: 'No se pudo registrar la cita. Verifica el backend y que el cliente no tenga otra cita en esa fecha.',
+      })
+    } finally {
+      setGuardandoCita(false)
+    }
+  }
+
   function abrirEditar(s: Servicio) {
     setEditando(s)
     setFormEdit({
@@ -395,7 +458,15 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
 
   if (!autenticado) {
     return (
-      <section className="page administrador login-page">
+      <section
+        className="page administrador login-page"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)), url(${fondoLogin})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
         <h1>Administrador</h1>
         <p className="page-subtitle">Inicia sesión para acceder a la administración.</p>
 
@@ -819,9 +890,109 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
       case 'clientes':
         return (
           <div className="admin-seccion">
-            <header className="orders-header">
-              <h2 className="orders-subtitle">Clientes</h2>
-            </header>
+            <div className="admin-section-header">
+              <div>
+                <h2>Clientes</h2>
+                <p className="page-subtitle">Administra los clientes registrados en la clínica.</p>
+              </div>
+              <button className="btn btn-primary" onClick={() => setMostrarFormCliente(!mostrarFormCliente)}>
+                {mostrarFormCliente ? 'Cerrar formulario' : '+ Agregar cliente'}
+              </button>
+            </div>
+
+            {mostrarFormCliente && (
+              <div className="modal-overlay" onClick={() => { setMostrarFormCliente(false); setFormCliente(clienteVacio) }}>
+                <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2>Agregar cliente</h2>
+                    <button
+                      className="modal-close"
+                      onClick={() => { setMostrarFormCliente(false); setFormCliente(clienteVacio) }}
+                      aria-label="Cerrar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <form onSubmit={manejarCrearCliente}>
+                    <div className="campo">
+                      <label htmlFor="ac-ci">Carné de identidad</label>
+                      <input
+                        id="ac-ci"
+                        type="text"
+                        required
+                        value={formCliente.ci}
+                        onChange={(e) => setFormCliente({ ...formCliente, ci: e.target.value })}
+                        placeholder="Ej. 03074563666"
+                      />
+                    </div>
+
+                    <div className="campo-row">
+                      <div className="campo">
+                        <label htmlFor="ac-nombre">Nombre</label>
+                        <input
+                          id="ac-nombre"
+                          type="text"
+                          required
+                          value={formCliente.nombre}
+                          onChange={(e) => setFormCliente({ ...formCliente, nombre: e.target.value })}
+                          placeholder="Ej. Juan"
+                        />
+                      </div>
+                      <div className="campo">
+                        <label htmlFor="ac-apellidos">Apellidos</label>
+                        <input
+                          id="ac-apellidos"
+                          type="text"
+                          required
+                          value={formCliente.apellidos}
+                          onChange={(e) => setFormCliente({ ...formCliente, apellidos: e.target.value })}
+                          placeholder="Ej. Pérez Gómez"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="campo">
+                      <label htmlFor="ac-telefono">Teléfono</label>
+                      <input
+                        id="ac-telefono"
+                        type="text"
+                        required
+                        value={formCliente.telefono}
+                        onChange={(e) => setFormCliente({ ...formCliente, telefono: e.target.value })}
+                        placeholder="Ej. +51 999 888 777"
+                      />
+                    </div>
+
+                    <div className="campo">
+                      <label htmlFor="ac-direccion">Dirección</label>
+                      <input
+                        id="ac-direccion"
+                        type="text"
+                        value={formCliente.direccion}
+                        onChange={(e) => setFormCliente({ ...formCliente, direccion: e.target.value })}
+                        placeholder="Ej. Av. Los Olivos 123"
+                      />
+                    </div>
+
+                    <div className="form-buttons">
+                      <button type="submit" className="btn btn-primary" disabled={guardandoCliente}>
+                        {guardandoCliente ? 'Guardando...' : 'Agregar cliente'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        disabled={guardandoCliente}
+                        onClick={() => { setMostrarFormCliente(false); setFormCliente(clienteVacio) }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
             <div className="orders-table-wrap">
               <table className="orders-table">
                 <thead>
@@ -869,9 +1040,104 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
 
         return (
           <div className="admin-seccion">
-            <header className="orders-header">
-              <h2 className="orders-subtitle">Citas</h2>
-            </header>
+            <div className="admin-section-header">
+              <div>
+                <h2>Citas</h2>
+                <p className="page-subtitle">Administra las citas agendadas en la clínica.</p>
+              </div>
+              <button className="btn btn-primary" onClick={() => setMostrarFormCita(!mostrarFormCita)}>
+                {mostrarFormCita ? 'Cerrar formulario' : '+ Agregar cita'}
+              </button>
+            </div>
+
+            {mostrarFormCita && (
+              <div className="modal-overlay" onClick={() => { setMostrarFormCita(false); setFormCita(citaVacio) }}>
+                <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2>Agregar cita</h2>
+                    <button
+                      className="modal-close"
+                      onClick={() => { setMostrarFormCita(false); setFormCita(citaVacio) }}
+                      aria-label="Cerrar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <form onSubmit={manejarCrearCita}>
+                    <div className="campo">
+                      <label htmlFor="cita-cliente">Cliente</label>
+                      <select
+                        id="cita-cliente"
+                        required
+                        value={formCita.cliente}
+                        onChange={(e) => setFormCita({ ...formCita, cliente: e.target.value })}
+                      >
+                        <option value="" disabled>
+                          {clientes.length === 0 ? 'No hay clientes registrados' : 'Selecciona un cliente'}
+                        </option>
+                        {clientes.map((c) => (
+                          <option key={c._id} value={c._id}>
+                            {c.ci} – {c.nombre} {c.apellidos}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="campo">
+                      <label htmlFor="cita-servicio">Servicio</label>
+                      <select
+                        id="cita-servicio"
+                        required
+                        value={formCita.servicio}
+                        onChange={(e) => setFormCita({ ...formCita, servicio: e.target.value })}
+                      >
+                        <option value="" disabled>
+                          {serviciosBackend.length === 0 ? 'No hay servicios registrados' : 'Selecciona un servicio'}
+                        </option>
+                        {serviciosBackend.map((s) => (
+                          <option key={s._id} value={s._id}>
+                            {s.nombreServicio}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="campo">
+                      <span className="campo-label">Fecha</span>
+                      <CalendarioCitas
+                        fechasInhabilitadas={fechasInhabilitadas}
+                        fechaSeleccionada={formCita.fecha}
+                        bloquearInhabilitados
+                        bloquearPasados
+                        onSeleccionarDia={(fecha) => setFormCita({ ...formCita, fecha })}
+                      />
+                      <p className="campo-ayuda">
+                        Los días en rojo están inhabilitados.{' '}
+                        {formCita.fecha
+                          ? `Fecha seleccionada: ${formCita.fecha}`
+                          : 'Selecciona un día del calendario.'}
+                      </p>
+                    </div>
+
+                    <div className="form-buttons">
+                      <button type="submit" className="btn btn-primary" disabled={guardandoCita}>
+                        {guardandoCita ? 'Guardando...' : 'Agregar cita'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        disabled={guardandoCita}
+                        onClick={() => { setMostrarFormCita(false); setFormCita(citaVacio) }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
             <div className="orders-table-wrap">
               <table className="orders-table">
                 <thead>
@@ -1149,6 +1415,12 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
           </nav>
 
           <div className="sidebar-footer">
+            {onVolverAlSitio && (
+              <button type="button" className="sidebar-link sidebar-volver" onClick={onVolverAlSitio}>
+                <Icono nombre="home" />
+                Volver al sitio
+              </button>
+            )}
             <div className="admin-user">
               <span className="admin-avatar">HM</span>
               <span className="admin-user-info">
