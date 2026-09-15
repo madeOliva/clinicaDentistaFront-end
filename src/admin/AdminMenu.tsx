@@ -1,6 +1,7 @@
 import { OPCIONES_MENU, OPCIONES_SECUNDARIAS } from './admin'
 import type { Seccion } from './admin'
 import { Icono } from './iconos'
+import { useContacto } from '../contactConfig'
 
 export default function AdminMenu({
   seccion,
@@ -17,20 +18,23 @@ export default function AdminMenu({
   cerrado: boolean
   onToggle: () => void
 }) {
+  const { contacto } = useContacto()
+
   return (
     <aside className={`admin-sidebar ${cerrado ? 'admin-sidebar-cerrado' : ''}`}>
       <div className="sidebar-brand">
-        <span className="brand-logo">▤</span>
-        <span className="brand-name">eProduct</span>
-        <button
-          type="button"
-          className="sidebar-toggle"
-          onClick={onToggle}
-          title={cerrado ? 'Expandir menú' : 'Contraer menú'}
-          aria-label={cerrado ? 'Expandir menú' : 'Contraer menú'}
-        >
-          <Icono nombre="menu" size={20} />
-        </button>
+        <span className="brand-name">{contacto.name}</span>
+        {cerrado && (
+          <button
+            type="button"
+            className="sidebar-toggle"
+            onClick={onToggle}
+            title="Expandir menú"
+            aria-label="Expandir menú"
+          >
+            <Icono nombre="menu" size={20} />
+          </button>
+        )}
       </div>
 
       <nav className="sidebar-menu">

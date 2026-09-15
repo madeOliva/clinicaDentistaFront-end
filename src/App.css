@@ -726,6 +726,14 @@
   line-height: 1;
 }
 
+.sidebar-brand .brand-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
 .sidebar-menu {
   flex: 1;
   padding: 1.1rem 0.75rem;
