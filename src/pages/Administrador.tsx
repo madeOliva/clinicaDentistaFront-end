@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { FormEvent, ReactElement } from 'react'
 import fondoLogin from '../pictures/Fondo.jpeg'
+import iconob from '../pictures/iconob.png'
 import { useContacto, VALORES_INICIALES } from '../contactConfig'
 import CalendarioCitas from '../components/CalendarioCitas'
 import {
@@ -542,6 +543,8 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
       >
         <h1>Administrador</h1>
         <p className="page-subtitle">Inicia sesión para acceder a la administración.</p>
+
+        <img src={iconob} alt="Icono de la clínica" className="login-icono" />
 
         <form className="servicio-form login-form" onSubmit={manejarLogin}>
           <h2>Iniciar sesión</h2>

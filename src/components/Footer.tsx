@@ -5,9 +5,7 @@ export default function Footer({ setVista }: { setVista: (v: Vista) => void }) {
   const { contacto } = useContacto()
   return (
     <footer className="footer">
-      <div className="footer-brand">
-        <span className="brand-logo">🦷</span> {contacto.name}
-      </div>
+      
       <div className="footer-links">
         <button onClick={() => setVista('servicios')}>Servicios</button>
         <button onClick={() => setVista('citas')}>Agenda tu cita</button>
