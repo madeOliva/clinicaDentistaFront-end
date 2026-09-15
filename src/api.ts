@@ -195,3 +195,13 @@ export async function updateServicio(
 export async function deleteServicio(id: string): Promise<void> {
   await api.delete(`/servicios/${id}`)
 }
+
+
+export async function deleteCliente(id: string): Promise<void> {
+  await api.delete(`/cliente/${id}`)
+}
+
+
+export async function deleteCita(id: string): Promise<void> {
+  await api.delete(`/cita/${id}`)
+}

@@ -16,6 +16,8 @@ import {
   eliminarDiaInhabilitado,
   createCliente,
   crearCita,
+  deleteCliente,
+  deleteCita,
 } from '../api'
 import type { Servicio } from '../types'
 import type { ContactoConfig, HorarioItem } from '../contactConfig'
@@ -133,11 +135,17 @@ function formatearFecha(fecha: string): string {
 }
 
 function GraficoCitas({ datos }: { datos: { nombre: string; cantidad: number }[] }) {
+  const POR_PAGINA = 5
+  const [pagina, setPagina] = useState(0)
+  const totalPaginas = Math.max(1, Math.ceil(datos.length / POR_PAGINA))
+  const paginaSegura = Math.min(pagina, totalPaginas - 1)
+  const inicio = paginaSegura * POR_PAGINA
+  const visibles = datos.slice(inicio, inicio + POR_PAGINA)
   const maximo = Math.max(...datos.map((d) => d.cantidad), 1)
 
   return (
     <div className="grafico-barras">
-      {datos.map((d) => (
+      {visibles.map((d) => (
         <div className="barra-fila" key={d.nombre}>
           <span className="barra-label" title={d.nombre}>
             {d.nombre}
@@ -148,6 +156,32 @@ function GraficoCitas({ datos }: { datos: { nombre: string; cantidad: number }[]
           <span className="barra-cantidad">{d.cantidad}</span>
         </div>
       ))}
+
+      {datos.length > POR_PAGINA && (
+        <div className="grafico-paginacion">
+          <button
+            type="button"
+            className="btn btn-small btn-outline"
+            disabled={paginaSegura === 0}
+            onClick={() => setPagina((p) => Math.max(0, p - 1))}
+            aria-label="Anterior"
+          >
+            ←
+          </button>
+          <span className="grafico-pagina-info">
+            {inicio + 1}–{Math.min(inicio + POR_PAGINA, datos.length)} de {datos.length}
+          </span>
+          <button
+            type="button"
+            className="btn btn-small btn-outline"
+            disabled={paginaSegura >= totalPaginas - 1}
+            onClick={() => setPagina((p) => p + 1)}
+            aria-label="Siguiente"
+          >
+            →
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -156,6 +190,9 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   const [form, setForm] = useState(formVacio)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [editando, setEditando] = useState<Servicio | null>(null)
+  const [servicioAEliminar, setServicioAEliminar] = useState<Servicio | null>(null)
+  const [clienteAEliminar, setClienteAEliminar] = useState<ClienteBackend | null>(null)
+  const [citaAEliminar, setCitaAEliminar] = useState<CitaBackend | null>(null)
   const [formEdit, setFormEdit] = useState(formVacio)
   const [formCliente, setFormCliente] = useState(clienteVacio)
   const [mostrarFormCliente, setMostrarFormCliente] = useState(false)
@@ -401,6 +438,42 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
     setFormEdit(formVacio)
   }
 
+  function confirmarEliminarServicio() {
+    if (!servicioAEliminar) return
+    eliminarServicioClick(servicioAEliminar.id)
+    setServicioAEliminar(null)
+  }
+
+  async function confirmarEliminarCliente() {
+    if (!clienteAEliminar) return
+    try {
+      await deleteCliente(clienteAEliminar._id)
+      setClienteAEliminar(null)
+      setRevisionDashboard((prev) => prev + 1)
+    } catch {
+      setModalConfig({
+        tipo: 'error',
+        titulo: 'Error al eliminar',
+        mensaje: 'No se pudo eliminar el cliente. Verifica que el backend esté disponible.',
+      })
+    }
+  }
+
+  async function confirmarEliminarCita() {
+    if (!citaAEliminar) return
+    try {
+      await deleteCita(citaAEliminar._id)
+      setCitaAEliminar(null)
+      setRevisionDashboard((prev) => prev + 1)
+    } catch {
+      setModalConfig({
+        tipo: 'error',
+        titulo: 'Error al eliminar',
+        mensaje: 'No se pudo eliminar la cita. Verifica que el backend esté disponible.',
+      })
+    }
+  }
+
   useEffect(() => {
     if (seccion === 'configuracion' && !editandoConfig) {
       setFormContacto(contacto)
@@ -575,8 +648,9 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
         )
         const conteoPorServicio = new Map<string, number>()
         for (const cita of citas) {
-          const nombre = serviciosPorId.get(cita.servicio) ?? cita.servicio
-          conteoPorServicio.set(nombre, (conteoPorServicio.get(nombre) ?? 0) + 1)
+          const nombreServicio = serviciosPorId.get(cita.servicio)
+          if (!nombreServicio) continue
+          conteoPorServicio.set(nombreServicio, (conteoPorServicio.get(nombreServicio) ?? 0) + 1)
         }
         const datosGrafico = [...conteoPorServicio.entries()].map(
           ([nombre, cantidad]) => ({ nombre, cantidad }),
@@ -780,7 +854,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                         </button>
                         <button
                           className="btn btn-small btn-danger"
-                          onClick={() => eliminarServicioClick(s.id)}
+                          onClick={() => setServicioAEliminar(s)}
                         >
                           Eliminar
                         </button>
@@ -881,6 +955,41 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+
+            {servicioAEliminar && (
+              <div className="modal-overlay" onClick={() => setServicioAEliminar(null)}>
+                <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2>Eliminar servicio</h2>
+                    <button
+                      className="modal-close"
+                      onClick={() => setServicioAEliminar(null)}
+                      aria-label="Cerrar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <p>
+                    ¿Estás seguro de que deseas borrar el servicio{' '}
+                    <strong>{servicioAEliminar.nombre}</strong>?
+                  </p>
+
+                  <div className="form-buttons">
+                    <button type="button" className="btn btn-danger" onClick={confirmarEliminarServicio}>
+                      Sí, eliminar
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => setServicioAEliminar(null)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1001,12 +1110,13 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                     <th>Cliente</th>
                     <th>Teléfono</th>
                     <th>Dirección</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {clientes.length === 0 ? (
                     <tr>
-                      <td className="table-empty" colSpan={4}>
+                      <td className="table-empty" colSpan={5}>
                         {cargandoDashboard && !datosCargados
                           ? 'Cargando clientes...'
                           : 'No hay clientes registrados.'}
@@ -1021,12 +1131,58 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                         </td>
                         <td>{c.telefono}</td>
                         <td>{c.direccion || '—'}</td>
+                        <td>
+                          <button
+                            className="btn btn-small btn-danger"
+                            onClick={() => setClienteAEliminar(c)}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
+
+            {clienteAEliminar && (
+              <div className="modal-overlay" onClick={() => setClienteAEliminar(null)}>
+                <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2>Eliminar cliente</h2>
+                    <button
+                      className="modal-close"
+                      onClick={() => setClienteAEliminar(null)}
+                      aria-label="Cerrar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <p>
+                    ¿Estás seguro de que deseas borrar el cliente{' '}
+                    <strong>
+                      {clienteAEliminar.nombre} {clienteAEliminar.apellidos}
+                    </strong>{' '}
+                    (CI {clienteAEliminar.ci})?
+                  </p>
+
+                  <div className="form-buttons">
+                    <button type="button" className="btn btn-danger" onClick={confirmarEliminarCliente}>
+                      Sí, eliminar
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => setClienteAEliminar(null)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )
 
@@ -1145,12 +1301,13 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                     <th>Cliente</th>
                     <th>Servicio</th>
                     <th>Fecha</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {citas.length === 0 ? (
                     <tr>
-                      <td className="table-empty" colSpan={3}>
+                      <td className="table-empty" colSpan={4}>
                         {cargandoDashboard && !datosCargados
                           ? 'Cargando citas...'
                           : 'No hay citas registradas.'}
@@ -1160,14 +1317,64 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                     citas.map((cita) => (
                       <tr key={cita._id}>
                         <td>{clientePorId.get(cita.cliente) ?? cita.cliente}</td>
-                        <td>{servicioPorId.get(cita.servicio) ?? cita.servicio}</td>
+                        <td>
+                          {servicioPorId.has(cita.servicio) ? (
+                            servicioPorId.get(cita.servicio)
+                          ) : (
+                            <span className="servicio-eliminado">Servicio eliminado</span>
+                          )}
+                        </td>
                         <td>{formatearFecha(cita.fecha)}</td>
+                        <td>
+                          <button
+                            className="btn btn-small btn-danger"
+                            onClick={() => setCitaAEliminar(cita)}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
+
+            {citaAEliminar && (
+              <div className="modal-overlay" onClick={() => setCitaAEliminar(null)}>
+                <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2>Eliminar cita</h2>
+                    <button
+                      className="modal-close"
+                      onClick={() => setCitaAEliminar(null)}
+                      aria-label="Cerrar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <p>
+                    ¿Estás seguro de que deseas borrar la cita del{' '}
+                    <strong>{clientePorId.get(citaAEliminar.cliente) ?? citaAEliminar.cliente}</strong>{' '}
+                    del día <strong>{formatearFecha(citaAEliminar.fecha)}</strong>?
+                  </p>
+
+                  <div className="form-buttons">
+                    <button type="button" className="btn btn-danger" onClick={confirmarEliminarCita}>
+                      Sí, eliminar
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => setCitaAEliminar(null)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )
       }

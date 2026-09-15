@@ -1084,6 +1084,24 @@
   text-align: right;
 }
 
+.grafico-paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.servicio-eliminado {
+  color: var(--color-rojo);
+  font-weight: 600;
+}
+
+.grafico-pagina-info {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
 @media (max-width: 1100px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
@@ -1401,4 +1419,13 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+.contenido:has(.page.home) .page,
+.contenido:has(.page.servicios) .page,
+.contenido:has(.page.citas) .page,
+.contenido:has(.page.contactenos) .page {
+  max-width: 1052px;
+  margin-left: auto;
+  margin-right: auto;
 }
