@@ -6,6 +6,7 @@ import CalendarioCitas from '../components/CalendarioCitas'
 import { getServicios, getClientePorCi, createCliente, crearCita, getDiasInhabilitados } from '../api'
 import type { ServicioBackend } from '../api'
 import type { Cita } from '../types'
+import { ciValido, soloLetras, soloNumeros, soloLetrasInput, soloNumerosInput, ciInput } from '../validaciones'
 
 const vacio: Cita = { ci: '', nombre: '', apellidos: '', edad: '', celular: '', servicio: '', fecha: '' }
 
@@ -16,6 +17,7 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
   const [cargandoServicios, setCargandoServicios] = useState(true)
   const [enviado, setEnviado] = useState(false)
   const [pais, setPais] = useState('+53')
+  const [errores, setErrores] = useState<Record<string, string>>({})
   const [fechasInhabilitadas, setFechasInhabilitadas] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -53,11 +55,25 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
   }, [servicioInicial])
 
   function cambiar(campo: keyof Cita, valor: string) {
-    setForm((f) => ({ ...f, [campo]: valor }))
+    let limpio = valor
+    if (campo === 'ci') limpio = ciInput(valor)
+    else if (campo === 'nombre' || campo === 'apellidos') limpio = soloLetrasInput(valor)
+    else if (campo === 'edad' || campo === 'celular') limpio = soloNumerosInput(valor)
+    setErrores((prev) => ({ ...prev, [campo]: '' }))
+    setForm((f) => ({ ...f, [campo]: limpio }))
   }
 
   async function manejarEnvio(e: FormEvent) {
     e.preventDefault()
+    const erroresLocal: Record<string, string> = {}
+    if (!ciValido(form.ci)) erroresLocal.ci = 'El CI debe tener 11 dígitos y una fecha de nacimiento válida (mes 01-12 y día válido)'
+    if (!soloLetras(form.nombre)) erroresLocal.nombre = 'El nombre solo puede contener letras'
+    if (!soloLetras(form.apellidos)) erroresLocal.apellidos = 'Los apellidos solo pueden contener letras'
+    if (!soloNumeros(form.edad) || Number(form.edad) < 1 || Number(form.edad) > 120) erroresLocal.edad = 'La edad debe ser un número entre 1 y 120'
+    if (!soloNumeros(form.celular)) erroresLocal.celular = 'El celular solo puede contener números'
+    setErrores(erroresLocal)
+    if (Object.keys(erroresLocal).length > 0) return
+
     const celularCompleto = `${pais} ${form.celular}`
     const servicioSeleccionado = servicios.find((s) => s._id === form.servicio)
     const nombreServicio = servicioSeleccionado?.nombreServicio ?? form.servicio
@@ -125,11 +141,14 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
           <input
             id="ci"
             type="text"
+            inputMode="numeric"
             required
             value={form.ci}
             onChange={(e) => cambiar('ci', e.target.value)}
-            placeholder="Ej. 03074563666"
+            placeholder="Ej. 92051234785"
+            className={errores.ci ? 'input-error' : ''}
           />
+          {errores.ci && <p className="campo-error">{errores.ci}</p>}
         </div>
 
         <div className="campo">
@@ -141,7 +160,9 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
             value={form.nombre}
             onChange={(e) => cambiar('nombre', e.target.value)}
             placeholder="Tu nombre"
+            className={errores.nombre ? 'input-error' : ''}
           />
+          {errores.nombre && <p className="campo-error">{errores.nombre}</p>}
         </div>
 
         <div className="campo">
@@ -153,21 +174,24 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
             value={form.apellidos}
             onChange={(e) => cambiar('apellidos', e.target.value)}
             placeholder="Tus apellidos"
+            className={errores.apellidos ? 'input-error' : ''}
           />
+          {errores.apellidos && <p className="campo-error">{errores.apellidos}</p>}
         </div>
 
         <div className="campo">
           <label htmlFor="edad">Edad</label>
           <input
             id="edad"
-            type="number"
+            type="text"
+            inputMode="numeric"
             required
-            min={1}
-            max={120}
             value={form.edad}
             onChange={(e) => cambiar('edad', e.target.value)}
             placeholder="Tu edad"
+            className={errores.edad ? 'input-error' : ''}
           />
+          {errores.edad && <p className="campo-error">{errores.edad}</p>}
         </div>
 
         <div className="campo">
@@ -189,12 +213,15 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
             <input
               id="celular"
               type="tel"
+              inputMode="numeric"
               required
               value={form.celular}
               onChange={(e) => cambiar('celular', e.target.value)}
               placeholder="Tu número de celular"
+              className={errores.celular ? 'input-error' : ''}
             />
           </div>
+          {errores.celular && <p className="campo-error">{errores.celular}</p>}
         </div>
 
         <div className="campo">

@@ -315,6 +315,24 @@
   min-height: 80px;
 }
 
+.campo input.input-error,
+.campo select.input-error,
+.campo textarea.input-error {
+  border-color: var(--color-error, #dc2626);
+}
+
+.campo input.input-error:focus,
+.campo select.input-error:focus,
+.campo textarea.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+
+.campo-error {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
 .campo-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -28,6 +28,14 @@ import type {
   MonedaBackend,
   ServicioBackend,
 } from '../api'
+import {
+  ciValido,
+  soloLetras,
+  telefonoValido,
+  soloLetrasInput,
+  soloTelefonoInput,
+  ciInput,
+} from '../validaciones'
 
 const formVacio = { nombre: '', descripcion: '', precio: '', moneda: '', disponible: true }
 const clienteVacio = { ci: '', nombre: '', apellidos: '', telefono: '', direccion: '' }
@@ -197,6 +205,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
   const [formCliente, setFormCliente] = useState(clienteVacio)
   const [mostrarFormCliente, setMostrarFormCliente] = useState(false)
   const [guardandoCliente, setGuardandoCliente] = useState(false)
+  const [erroresCliente, setErroresCliente] = useState<Record<string, string>>({})
   const [formCita, setFormCita] = useState(citaVacio)
   const [mostrarFormCita, setMostrarFormCita] = useState(false)
   const [guardandoCita, setGuardandoCita] = useState(false)
@@ -332,7 +341,13 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
 
   async function manejarCrearCliente(e: FormEvent) {
     e.preventDefault()
-    if (!formCliente.ci.trim() || !formCliente.nombre.trim() || !formCliente.apellidos.trim() || !formCliente.telefono.trim()) return
+    const erroresLocal: Record<string, string> = {}
+    if (!ciValido(formCliente.ci)) erroresLocal.ci = 'El CI debe tener 11 dígitos y una fecha de nacimiento válida (mes 01-12 y día válido)'
+    if (!soloLetras(formCliente.nombre)) erroresLocal.nombre = 'El nombre solo puede contener letras'
+    if (!soloLetras(formCliente.apellidos)) erroresLocal.apellidos = 'Los apellidos solo pueden contener letras'
+    if (!telefonoValido(formCliente.telefono)) erroresLocal.telefono = 'El teléfono solo puede contener números, espacios o +'
+    setErroresCliente(erroresLocal)
+    if (Object.keys(erroresLocal).length > 0) return
 
     setGuardandoCliente(true)
     try {
@@ -1010,13 +1025,13 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
             </div>
 
             {mostrarFormCliente && (
-              <div className="modal-overlay" onClick={() => { setMostrarFormCliente(false); setFormCliente(clienteVacio) }}>
+              <div className="modal-overlay" onClick={() => { setMostrarFormCliente(false); setFormCliente(clienteVacio); setErroresCliente({}) }}>
                 <div className="modal-card" onClick={(e) => e.stopPropagation()}>
                   <div className="modal-header">
                     <h2>Agregar cliente</h2>
                     <button
                       className="modal-close"
-                      onClick={() => { setMostrarFormCliente(false); setFormCliente(clienteVacio) }}
+                      onClick={() => { setMostrarFormCliente(false); setFormCliente(clienteVacio); setErroresCliente({}) }}
                       aria-label="Cerrar"
                     >
                       ✕
@@ -1029,11 +1044,14 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                       <input
                         id="ac-ci"
                         type="text"
+                        inputMode="numeric"
                         required
                         value={formCliente.ci}
-                        onChange={(e) => setFormCliente({ ...formCliente, ci: e.target.value })}
-                        placeholder="Ej. 03074563666"
+                        onChange={(e) => setFormCliente({ ...formCliente, ci: ciInput(e.target.value) })}
+                        placeholder="Ej. 92051234785"
+                        className={erroresCliente.ci ? 'input-error' : ''}
                       />
+                      {erroresCliente.ci && <p className="campo-error">{erroresCliente.ci}</p>}
                     </div>
 
                     <div className="campo-row">
@@ -1044,9 +1062,11 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                           type="text"
                           required
                           value={formCliente.nombre}
-                          onChange={(e) => setFormCliente({ ...formCliente, nombre: e.target.value })}
+                          onChange={(e) => setFormCliente({ ...formCliente, nombre: soloLetrasInput(e.target.value) })}
                           placeholder="Ej. Juan"
+                          className={erroresCliente.nombre ? 'input-error' : ''}
                         />
+                        {erroresCliente.nombre && <p className="campo-error">{erroresCliente.nombre}</p>}
                       </div>
                       <div className="campo">
                         <label htmlFor="ac-apellidos">Apellidos</label>
@@ -1055,9 +1075,11 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                           type="text"
                           required
                           value={formCliente.apellidos}
-                          onChange={(e) => setFormCliente({ ...formCliente, apellidos: e.target.value })}
+                          onChange={(e) => setFormCliente({ ...formCliente, apellidos: soloLetrasInput(e.target.value) })}
                           placeholder="Ej. Pérez Gómez"
+                          className={erroresCliente.apellidos ? 'input-error' : ''}
                         />
+                        {erroresCliente.apellidos && <p className="campo-error">{erroresCliente.apellidos}</p>}
                       </div>
                     </div>
 
@@ -1066,11 +1088,14 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                       <input
                         id="ac-telefono"
                         type="text"
+                        inputMode="tel"
                         required
                         value={formCliente.telefono}
-                        onChange={(e) => setFormCliente({ ...formCliente, telefono: e.target.value })}
+                        onChange={(e) => setFormCliente({ ...formCliente, telefono: soloTelefonoInput(e.target.value) })}
                         placeholder="Ej. +51 999 888 777"
+                        className={erroresCliente.telefono ? 'input-error' : ''}
                       />
+                      {erroresCliente.telefono && <p className="campo-error">{erroresCliente.telefono}</p>}
                     </div>
 
                     <div className="campo">
@@ -1092,7 +1117,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
                         type="button"
                         className="btn btn-outline"
                         disabled={guardandoCliente}
-                        onClick={() => { setMostrarFormCliente(false); setFormCliente(clienteVacio) }}
+                        onClick={() => { setMostrarFormCliente(false); setFormCliente(clienteVacio); setErroresCliente({}) }}
                       >
                         Cancelar
                       </button>
