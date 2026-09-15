@@ -441,11 +441,34 @@
 }
 
 .administrador .login-form {
-  max-width: 420px;
+  max-width: 400px;
   width: 100%;
   margin-left: auto;
   margin-right: auto;
+  position: relative;
+  background: rgba(255, 255, 255, 0.683);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 18px;
+  padding: 4rem 2rem 2rem;
+  box-shadow: 0 10px 35px rgba(15, 23, 42, 0.18);
 }
+
+.login-icono {
+  position: absolute;
+  top: -65px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 130px;
+  height: 130px;
+  object-fit: contain;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+  z-index: 2;
+}
+
+
 
 .login-form .campo {
   margin-bottom: 1rem;
@@ -660,7 +683,7 @@
   flex-wrap: wrap;
 }
 
-/* ===== Dashboard Administrador (Especificación Menu.txt) ===== */
+/* ===== Dashboard Administrador ===== */
 .administrador {
   min-height: 100vh;
   background: #f8fafc;
@@ -1011,6 +1034,49 @@
   cursor: default;
 }
 
+.campo-cal {
+  position: relative;
+}
+
+.cal-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--color-azul-claro);
+  border-radius: 10px;
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.cal-toggle:hover {
+  border-color: var(--color-azul);
+  box-shadow: 0 1px 6px rgba(37, 99, 235, 0.15);
+}
+
+.cal-toggle svg {
+  flex-shrink: 0;
+}
+
+.cal-flotante {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+}
+
 .calendario-titulo {
   display: flex;
   align-items: center;
@@ -1147,7 +1213,7 @@
   max-width: 640px;
 }
 
-/* ===== Cabecera de pedidos y tabla (Especificación Menu.txt) ===== */
+/* ===== Cabecera de pedidos y tabla ===== */
 .orders-header {
   display: flex;
   align-items: center;

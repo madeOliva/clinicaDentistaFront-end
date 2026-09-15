@@ -10,6 +10,11 @@ import { ciValido, soloLetras, soloNumeros, soloLetrasInput, soloNumerosInput, c
 
 const vacio: Cita = { ci: '', nombre: '', apellidos: '', edad: '', celular: '', servicio: '', fecha: '' }
 
+function formatearFecha(fecha: string): string {
+  const [anio, mes, dia] = fecha.slice(0, 10).split('-')
+  return `${dia}/${mes}/${anio}`
+}
+
 export default function Citas({ servicioInicial = '' }: { servicioInicial?: string }) {
   const { contacto } = useContacto()
   const [form, setForm] = useState<Cita>({ ...vacio })
@@ -19,6 +24,7 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
   const [pais, setPais] = useState('+53')
   const [errores, setErrores] = useState<Record<string, string>>({})
   const [fechasInhabilitadas, setFechasInhabilitadas] = useState<Set<string>>(new Set())
+  const [calendarAbierto, setCalendarAbierto] = useState(false)
 
   useEffect(() => {
     let activo = true
@@ -243,17 +249,47 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
           </select>
         </div>
 
-        <div className="campo">
+        <div className="campo campo-cal">
           <span className="campo-label">Fecha deseada</span>
-          <CalendarioCitas
-            fechasInhabilitadas={fechasInhabilitadas}
-            fechaSeleccionada={form.fecha}
-            bloquearInhabilitados
-            bloquearPasados
-            onSeleccionarDia={(fecha) => cambiar('fecha', fecha)}
-          />
+
+          <button type="button" className="cal-toggle" onClick={() => setCalendarAbierto((v) => !v)}>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            {form.fecha ? formatearFecha(form.fecha) : 'Seleccionar fecha'}
+          </button>
+
+          {calendarAbierto && (
+            <div className="cal-flotante">
+              <CalendarioCitas
+                fechasInhabilitadas={fechasInhabilitadas}
+                fechaSeleccionada={form.fecha}
+                bloquearInhabilitados
+                bloquearPasados
+                onSeleccionarDia={(fecha) => {
+                  cambiar('fecha', fecha)
+                  setCalendarAbierto(false)
+                }}
+              />
+            </div>
+          )}
+
           <p className="campo-ayuda">
-            Los días en rojo están inhabilitados. {form.fecha ? `Fecha seleccionada: ${form.fecha}` : 'Selecciona un día del calendario.'}
+            Los días en rojo están inhabilitados.
+            {form.fecha ? ` Fecha seleccionada: ${formatearFecha(form.fecha)}.` : ' Toca el calendario para elegir un día.'}
           </p>
         </div>
 

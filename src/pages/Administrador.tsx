@@ -558,6 +558,7 @@ export default function Administrador({ onVolverAlSitio }: { onVolverAlSitio?: (
         <h1>Administrador</h1>
         <p className="page-subtitle">Inicia sesión para acceder a la administración.</p>
 
+
         <form className="servicio-form login-form" onSubmit={manejarLogin}>
           <h2>Iniciar sesión</h2>
 
