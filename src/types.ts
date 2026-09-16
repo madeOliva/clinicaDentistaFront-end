@@ -17,4 +17,4 @@ export interface Cita {
   fecha: string
 }
 
-export type Vista = 'home' | 'servicios' | 'citas' | 'contactenos' | 'administrador'
+export type Vista = 'home' | 'servicios' | 'citas' | 'contactenos'

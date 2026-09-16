@@ -11,7 +11,6 @@ const enlaces: { key: Vista; label: string }[] = [
   { key: 'servicios', label: 'Servicios' },
   { key: 'citas', label: 'Citas' },
   { key: 'contactenos', label: 'Contáctenos' },
-  { key: 'administrador', label: 'Administrador' },
 ]
 
 export default function Navbar({ vista, setVista }: NavbarProps) {
