@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useServicios } from '../data'
 import { getServicios, getMonedas } from '../api'
 import type { Servicio } from '../types'
 
 export default function Servicios({ onReservar }: { onReservar: (nombre: string) => void }) {
-  const { servicios } = useServicios()
   const [backendServicios, setBackendServicios] = useState<Servicio[] | null>(null)
   const [error, setError] = useState('')
   const [reintentos, setReintentos] = useState(0)
@@ -39,7 +37,7 @@ export default function Servicios({ onReservar }: { onReservar: (nombre: string)
     }
   }, [reintentos])
 
-  const mostrar = (backendServicios ?? servicios).filter((s) => s.disponible !== false)
+  const mostrar = (backendServicios ?? []).filter((s) => s.disponible !== false)
 
   return (
     <section className="page servicios">
