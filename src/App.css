@@ -166,8 +166,13 @@
 }
 
 .hero-icon {
-  font-size: 4rem;
   margin-bottom: 0.5rem;
+}
+
+.hero-icon .icono-imagen {
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
 }
 
 .hero-subtitle {
@@ -200,7 +205,14 @@
 }
 
 .feature-icon {
-  font-size: 2.2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.feature-icon .icono-imagen {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
 }
 
 .feature-card p {
