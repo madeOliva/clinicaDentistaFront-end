@@ -74,6 +74,7 @@ export interface ConfiguracionBackend {
   facebook: string
   instagram: string
   schedule: HorarioBackend[]
+  maxCitasPorDia?: number
 }
 
 

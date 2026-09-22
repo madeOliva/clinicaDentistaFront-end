@@ -345,6 +345,12 @@
   margin: 0;
 }
 
+.campo-ok {
+  color: #15803d;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
 .campo-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -689,6 +695,20 @@
 
 .modal-card .form-buttons {
   justify-content: center;
+  width: 100%;
+}
+
+.modal-calendario {
+  max-width: 360px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.modal-calendario .campo-ayuda {
+  width: 100%;
+}
+
+.modal-calendario .calendario {
   width: 100%;
 }
 
@@ -1076,6 +1096,21 @@
   background: #f8fafc;
   border: 1px solid transparent;
   transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.cal-dia.lleno {
+  background: #dcfce7;
+  color: #14532d;
+  border-color: #86efac;
+  font-weight: 700;
+}
+
+.cal-dia.hoy.lleno,
+.cal-dia.con-cita.lleno,
+.cal-dia.hoy.con-cita.lleno {
+  background: #dcfce7;
+  color: #14532d;
+  border-color: #86efac;
 }
 
 .cal-dia.vacio {

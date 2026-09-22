@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { FormEvent } from 'react'
 import { useContacto, whatsappLink } from '../contactConfig'
 import { PAISES } from '../paises'
 import CalendarioCitas from '../components/CalendarioCitas'
-import { getServicios, getClientePorCi, createCliente, crearCita, getDiasInhabilitados } from '../api'
+import { getServicios, getClientePorCi, createCliente, crearCita, getDiasInhabilitados, getCitas, getConfiguracion } from '../api'
 import type { ServicioBackend } from '../api'
 import type { Cita } from '../types'
 import { ciValido, soloLetras, soloNumeros, soloLetrasInput, soloNumerosInput, ciInput } from '../validaciones'
@@ -25,6 +25,58 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
   const [errores, setErrores] = useState<Record<string, string>>({})
   const [fechasInhabilitadas, setFechasInhabilitadas] = useState<Set<string>>(new Set())
   const [calendarAbierto, setCalendarAbierto] = useState(false)
+  const [maxCitasPorDia, setMaxCitasPorDia] = useState<number | null>(null)
+  const [citasPorDia, setCitasPorDia] = useState<Map<string, number>>(new Map())
+  const [buscandoCi, setBuscandoCi] = useState(false)
+  const [ciAutocompletado, setCiAutocompletado] = useState(false)
+  const ciBuscadaRef = useRef('')
+
+  async function buscarClientePorCi(ci: string) {
+    if (!ciValido(ci)) return
+    ciBuscadaRef.current = ci
+    setBuscandoCi(true)
+    try {
+      const cliente = await getClientePorCi(ci)
+      if (ciBuscadaRef.current !== ci) return
+      let numero = (cliente.telefono ?? '').trim()
+      const paisCoincide = PAISES.find((p) => numero.startsWith(p.codigo))
+      if (paisCoincide) {
+        setPais(paisCoincide.codigo)
+        numero = numero.slice(paisCoincide.codigo.length).trim()
+      }
+      setForm((f) => ({
+        ...f,
+        nombre: cliente.nombre,
+        apellidos: cliente.apellidos,
+        celular: numero,
+      }))
+      setErrores((prev) => ({ ...prev, nombre: '', apellidos: '', celular: '' }))
+      setCiAutocompletado(true)
+    } catch {
+      if (ciBuscadaRef.current === ci) setCiAutocompletado(false)
+    } finally {
+      if (ciBuscadaRef.current === ci) setBuscandoCi(false)
+    }
+  }
+
+  async function cargarCupos() {
+    try {
+      const [config, citas] = await Promise.all([getConfiguracion(), getCitas()])
+      setMaxCitasPorDia(config.maxCitasPorDia ?? 10)
+      const mapa = new Map<string, number>()
+      for (const c of citas) {
+        const fecha = c.fecha.slice(0, 10)
+        mapa.set(fecha, (mapa.get(fecha) ?? 0) + 1)
+      }
+      setCitasPorDia(mapa)
+    } catch {
+      setMaxCitasPorDia(null)
+    }
+  }
+
+  useEffect(() => {
+    cargarCupos()
+  }, [])
 
   useEffect(() => {
     let activo = true
@@ -62,11 +114,16 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
 
   function cambiar(campo: keyof Cita, valor: string) {
     let limpio = valor
-    if (campo === 'ci') limpio = ciInput(valor)
-    else if (campo === 'nombre' || campo === 'apellidos') limpio = soloLetrasInput(valor)
+    if (campo === 'ci') {
+      limpio = ciInput(valor)
+      if (limpio.length < 11) setCiAutocompletado(false)
+    } else if (campo === 'nombre' || campo === 'apellidos') limpio = soloLetrasInput(valor)
     else if (campo === 'edad' || campo === 'celular') limpio = soloNumerosInput(valor)
     setErrores((prev) => ({ ...prev, [campo]: '' }))
     setForm((f) => ({ ...f, [campo]: limpio }))
+    if (campo === 'ci' && limpio.length === 11 && ciValido(limpio)) {
+      buscarClientePorCi(limpio)
+    }
   }
 
   async function manejarEnvio(e: FormEvent) {
@@ -77,6 +134,10 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
     if (!soloLetras(form.apellidos)) erroresLocal.apellidos = 'Los apellidos solo pueden contener letras'
     if (!soloNumeros(form.edad) || Number(form.edad) < 1 || Number(form.edad) > 120) erroresLocal.edad = 'La edad debe ser un número entre 1 y 120'
     if (!soloNumeros(form.celular)) erroresLocal.celular = 'El celular solo puede contener números'
+    const fechaCita = form.fecha.slice(0, 10)
+    if (maxCitasPorDia != null && (citasPorDia.get(fechaCita) ?? 0) >= maxCitasPorDia) {
+      erroresLocal.fecha = 'Ese día ya está completo. Elige otra fecha con cupos disponibles.'
+    }
     setErrores(erroresLocal)
     if (Object.keys(erroresLocal).length > 0) return
 
@@ -105,6 +166,8 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
         servicio: form.servicio,
         fecha: form.fecha,
       })
+
+      cargarCupos()
 
       const mensaje =
         `Hola ${contacto.name}, deseo agendar una cita.\n\n` +
@@ -155,6 +218,10 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
             className={errores.ci ? 'input-error' : ''}
           />
           {errores.ci && <p className="campo-error">{errores.ci}</p>}
+          {buscandoCi && !ciAutocompletado && <p className="campo-ayuda">Buscando tus datos...</p>}
+          {ciAutocompletado && !buscandoCi && (
+            <p className="campo-ok">Cliente encontrado: tus datos se completaron automáticamente.</p>
+          )}
         </div>
 
         <div className="campo">
@@ -273,24 +340,45 @@ export default function Citas({ servicioInicial = '' }: { servicioInicial?: stri
           </button>
 
           {calendarAbierto && (
-            <div className="cal-flotante">
-              <CalendarioCitas
-                fechasInhabilitadas={fechasInhabilitadas}
-                fechaSeleccionada={form.fecha}
-                bloquearInhabilitados
-                bloquearPasados
-                onSeleccionarDia={(fecha) => {
-                  cambiar('fecha', fecha)
-                  setCalendarAbierto(false)
-                }}
-              />
+            <div className="modal-overlay" onClick={() => setCalendarAbierto(false)}>
+              <div className="modal-card modal-calendario" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3>Elige una fecha</h3>
+                  <button
+                    type="button"
+                    className="modal-close"
+                    onClick={() => setCalendarAbierto(false)}
+                    aria-label="Cerrar"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <CalendarioCitas
+                  fechasInhabilitadas={fechasInhabilitadas}
+                  fechaSeleccionada={form.fecha}
+                  bloquearInhabilitados
+                  bloquearPasados
+                  citasPorDia={citasPorDia}
+                  maxCitasPorDia={maxCitasPorDia ?? undefined}
+                  onSeleccionarDia={(fecha) => {
+                    cambiar('fecha', fecha)
+                    setCalendarAbierto(false)
+                  }}
+                />
+
+                <p className="campo-ayuda">
+                  Los días en rojo están inhabilitados y los verdes no tienen cupos disponibles.
+                </p>
+              </div>
             </div>
           )}
 
           <p className="campo-ayuda">
-            Los días en rojo están inhabilitados.
+            Los días en rojo están inhabilitados y los verdes no tienen cupos disponibles.
             {form.fecha ? ` Fecha seleccionada: ${formatearFecha(form.fecha)}.` : ' Toca el calendario para elegir un día.'}
           </p>
+          {errores.fecha && <p className="campo-error">{errores.fecha}</p>}
         </div>
 
         <button type="submit" className="btn btn-primary btn-block" disabled={!form.fecha}>

@@ -23,6 +23,7 @@ export default function Contactenos() {
           instagram: cfg.instagram ?? '',
           whatsapp: cfg.whatsapp ?? '',
           whatsappUrl: cfg.whatsappUrl ?? '',
+          maxCitasPorDia: cfg.maxCitasPorDia ?? 10,
         })
       })
       .catch(() => {})
